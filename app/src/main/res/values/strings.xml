@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">LENA</string>
+    <string name="Logo">Application Logo</string>
+    <string name="Chat_menu">Chat Menu</string>
+    <string name="textField_label">Ask Anything!</string>
+    <string name="invalid_credentials">Invalid username or password</string>
+</resources>
