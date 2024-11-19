@@ -1,4 +1,4 @@
-package com.example.lena.ViewModels
+package com.example.lena.viewModels
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
