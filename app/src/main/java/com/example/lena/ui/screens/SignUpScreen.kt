@@ -2,6 +2,12 @@ package com.example.lena.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -79,6 +85,11 @@ fun SignUpScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val uiState by viewModel.uiState.collectAsState()
 
+    val textSize by animateFloatAsState(targetValue = if (isImeVisible) 32f else 28f, animationSpec = tween(durationMillis = 300))
+    val subTextSize by animateFloatAsState(targetValue = if (isImeVisible) 20f else 16f, animationSpec = tween(durationMillis = 300))
+    val spacerHeight by animateDpAsState(targetValue = if (isImeVisible) 0.dp else 40.dp, animationSpec = tween(durationMillis = 300))
+    val subSpacerHeight by animateDpAsState(targetValue = if (isImeVisible) 4.dp else 20.dp, animationSpec = tween(durationMillis = 300))
+
     Column(modifier = Modifier
         .fillMaxWidth()
         .pointerInput(Unit) { detectTapGestures(onTap = { focusManager.clearFocus() }) }, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -86,24 +97,23 @@ fun SignUpScreen(
             .height(80.dp)
             .fillMaxWidth())
 
-        Crossfade(targetState = isImeVisible, label = "Welcome Screen Label") {
+        Crossfade(targetState = isImeVisible, label = "Welcome Screen Label") { isKeyboardVisible ->
             Column(modifier.align(Alignment.CenterHorizontally)) {
-                Spacer(modifier.height(if (it) 0.dp else 40.dp))
+                Spacer(modifier.height(spacerHeight))
                 Text(
                     text = "Hey There!",
-                    fontWeight = if (!it) FontWeight.Bold else FontWeight.Light,
-                    fontSize = if (it) 32.sp else 28.sp,
+                    fontWeight = if (!isKeyboardVisible) FontWeight.Bold else FontWeight.Light,
+                    fontSize = textSize.sp,
                     modifier = Modifier.align(Alignment.CenterHorizontally)
-
                 )
                 Text(
                     text = "Let's create an account!",
-                    fontWeight = if (it) FontWeight.Bold else FontWeight.Light,
-                    fontSize = if (it) 20.sp else 16.sp,
+                    fontWeight = if (isKeyboardVisible) FontWeight.Bold else FontWeight.Light,
+                    fontSize = subTextSize.sp,
                     modifier = Modifier
                 )
             }
-            Spacer(modifier.height(if (it) 4.dp else 20.dp))
+            Spacer(modifier.height(subSpacerHeight))
         }
 
 

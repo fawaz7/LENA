@@ -3,6 +3,8 @@ package com.example.lena.ui.screens
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -66,7 +68,12 @@ fun LoginScreen(
     val focusManager = LocalFocusManager.current
     val usernameFocusRequester = FocusRequester()
     val passwordFocusRequester = FocusRequester()
-    val logoSize by animateDpAsState(targetValue = if (isImeVisible) 80.dp else 270.dp, label = "Animating the Logo Size")
+
+    val logoSize by animateDpAsState(targetValue = if (isImeVisible) 80.dp else 270.dp, animationSpec = tween(durationMillis = 300))
+    val textSize by animateFloatAsState(targetValue = if (isImeVisible) 34f else 28f, animationSpec = tween(durationMillis = 300))
+    val subTextSize by animateFloatAsState(targetValue = if (isImeVisible) 20f else 16f, animationSpec = tween(durationMillis = 300))
+    val spacerHeight by animateDpAsState(targetValue = if (isImeVisible) 0.dp else 40.dp, animationSpec = tween(durationMillis = 300))
+    val subSpacerHeight by animateDpAsState(targetValue = if (isImeVisible) 4.dp else 20.dp, animationSpec = tween(durationMillis = 300))
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -105,20 +112,23 @@ fun LoginScreen(
 
         Crossfade(targetState = isImeVisible, label = "Welcome Screen Label") {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Spacer(modifier.height(spacerHeight))
                 Text(
                     text = "Welcome Back!",
                     fontWeight = if (!it) FontWeight.Bold else FontWeight.Light,
-                    fontSize = if (it) 34.sp else 28.sp, // Font size increases when keyboard is visible
+                    fontSize = textSize.sp,
                     modifier = Modifier
                 )
                 Text(
                     text = "Login to your account",
                     fontWeight = if (it) FontWeight.Bold else FontWeight.Light,
-                    fontSize = if (it) 20.sp else 16.sp, // Font size increases when keyboard is visible
+                    fontSize = subTextSize.sp,
                     modifier = Modifier
                 )
+                Spacer(modifier.height(subSpacerHeight))
             }
         }
+
         Spacer(modifier.height(20.dp))
         OutlinedTextField(
             value = uiState.username,
