@@ -31,6 +31,10 @@ class SignUpViewModel : ViewModel(){
         return passwordInput == password
     }
 
+    fun validateForms(): Boolean{
+        return username.isNotBlank() && email.isNotBlank() && password.isNotBlank() && re_password.isNotBlank()
+    }
+
 
 
 

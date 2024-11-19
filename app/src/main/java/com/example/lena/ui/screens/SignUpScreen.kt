@@ -233,8 +233,8 @@ fun SignUpScreen(
                     onDone = {
                         viewModel.signUp {
                             successfulSignUp = true
-                            Log.i("SignUpScreen", "Sign up successful!")
                         }
+                        keyboardController?.hide()
                     }
                 ),
                 isError = repeatPasswordError,
@@ -262,7 +262,10 @@ fun SignUpScreen(
             )
         } else {
             viewModel.error?.let { error ->
-                Text(text = error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
+                Text(
+                    text = error, color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp).align(Alignment.CenterHorizontally),
+                    style = MaterialTheme.typography.bodySmall)
                 successfulSignUp = false
             }
         }
@@ -270,10 +273,10 @@ fun SignUpScreen(
             onClick = {
                 viewModel.signUp {
                     successfulSignUp = true
-                    Log.i("SignUpScreen", "Sign up successful!")
                 }
+                keyboardController?.hide()
             },
-            enabled = true, //TO-DO: add validation
+            enabled = viewModel.validateForms(), //TO-DO: add validation
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color.Black // Change this to your desired color
             ),
