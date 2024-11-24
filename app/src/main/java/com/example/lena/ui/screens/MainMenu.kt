@@ -3,15 +3,15 @@ package com.example.lena.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,33 +33,36 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.lena.Data.LenaConstants.greetingStrings
-import com.example.lena.Data.LenaConstants.textInputPrompts
 import com.example.lena.Models.MessageModel
 import com.example.lena.R
-import com.example.lena.ui.rememberImeState
 import com.example.lena.ui.theme.LENATheme
 import com.example.lena.viewModels.ChatViewModel
 
 
 @Composable
 fun MainMenu(navController: NavController) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val chatViewModel: ChatViewModel = viewModel()
     Scaffold(
         topBar = { MainMenuTopBar() }
@@ -68,24 +71,32 @@ fun MainMenu(navController: NavController) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .imePadding()
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxSize()
+                    .padding(bottom = 64.dp) // Reserve space for the input field
+                    .pointerInput(Unit) {
+                        detectTapGestures(onTap = {
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
+                        })
+                    }
             ) {
                 MessageList(
                     messageList = chatViewModel.messageList,
                     modifier = Modifier.weight(1f)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
             }
+
+            // Position the message input at the bottom
             MessageInput(
                 onMessageSend = { chatViewModel.sendMessage(it) },
                 modifier = Modifier
+                    .fillMaxWidth()
                     .align(Alignment.BottomCenter)
                     .imePadding()
-                    .padding(8.dp)
             )
         }
     }
@@ -106,9 +117,7 @@ fun MainMenuTopBar(modifier: Modifier = Modifier) {
                 Image(
                     painter = painterResource(id = R.drawable.medusa_white),
                     contentDescription = stringResource(R.string.Logo),
-                    modifier = Modifier
-                        .size(36.dp)
-                        .weight(0.15f)
+                    modifier = Modifier.size(36.dp)
                 )
             }
         },
@@ -121,26 +130,10 @@ fun MainMenuTopBar(modifier: Modifier = Modifier) {
 @Composable
 fun MessageList(modifier: Modifier = Modifier, messageList: List<MessageModel>) {
     if (messageList.isEmpty()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize(0.9f),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.medusa_black),
-                contentDescription = stringResource(R.string.Logo),
-                modifier = Modifier
-                    .size(100.dp)
-            )
-            Text(
-                text = greetingStrings.random(),
-                textAlign = TextAlign.Center,
-            )
-        }
+        Greetings()
     } else {
         LazyColumn(
-            modifier = modifier,
+            modifier = modifier.fillMaxSize(),
             reverseLayout = true
         ) {
             items(messageList.reversed()) {
@@ -149,7 +142,6 @@ fun MessageList(modifier: Modifier = Modifier, messageList: List<MessageModel>) 
         }
     }
 }
-
 @Composable
 
 fun MessageRow(messageModel: MessageModel) {
@@ -190,18 +182,19 @@ fun MessageRow(messageModel: MessageModel) {
 @Composable
 fun MessageInput(onMessageSend: (String) -> Unit, modifier: Modifier = Modifier) {
     var message by remember { mutableStateOf("") }
-    val textFieldLabel = textInputPrompts.random()
+    val keyboardController = LocalSoftwareKeyboardController.current
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(8.dp),
+            .padding(start = 8.dp, top = 8.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         OutlinedTextField(
             value = message,
             onValueChange = { message = it },
-            label = { Text(text = textFieldLabel) },
+            label = { Text(stringResource(R.string.textField_label)) },
             modifier = Modifier.weight(0.8f),
+            maxLines = 4,
             singleLine = true,
             keyboardOptions = KeyboardOptions.Default.copy(
                 imeAction = ImeAction.Done
@@ -217,6 +210,7 @@ fun MessageInput(onMessageSend: (String) -> Unit, modifier: Modifier = Modifier)
         )
         IconButton(onClick = {
             if (message.isNotBlank()) {
+                keyboardController?.hide()
                 onMessageSend(message)
                 message = ""
             }
@@ -231,25 +225,32 @@ fun MessageInput(onMessageSend: (String) -> Unit, modifier: Modifier = Modifier)
 
 @Composable
 fun Greetings(){
-    Column(
-        modifier = Modifier
-            .fillMaxSize(0.9f),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.medusa_black),
-            contentDescription = stringResource(R.string.Logo),
-            modifier = Modifier
-                .size(100.dp)
+    Box(modifier = Modifier
+        .fillMaxWidth()
+        .imePadding(),
+        contentAlignment = Alignment.Center) {
+        Column(
+            modifier = Modifier,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.medusa_black),
+                contentDescription = stringResource(R.string.Logo),
+                modifier = Modifier
+                    .size(100.dp)
 
-        )
-        Text(
-            text = greetingStrings.random(),
-            textAlign = TextAlign.Center,
-        )
+            )
+            Text(
+                text = greetingStrings.random(),
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
+
+
+
 
 @Preview(showSystemUi = true)
 @Composable
@@ -261,8 +262,16 @@ fun MainMenuPreview() {
 
 @Preview
 @Composable
-fun GreetingsPreview(){
+fun MessageInputPreview(){
     LENATheme {
         MessageInput({})
+    }
+}
+
+@Preview
+@Composable
+fun GreetingsPreview(){
+    LENATheme {
+        Greetings()
     }
 }
