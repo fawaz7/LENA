@@ -54,6 +54,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
@@ -168,7 +169,8 @@ fun SignUpScreen(
                 )
             },
             keyboardOptions = KeyboardOptions.Default.copy(
-                imeAction = ImeAction.Next
+                imeAction = ImeAction.Next,
+                keyboardType = KeyboardType.Email,
             ),
             keyboardActions = KeyboardActions(
                 onNext = { passwordFocusRequester.requestFocus() }
@@ -207,7 +209,10 @@ fun SignUpScreen(
                 },
                 visualTransformation = if (uiState.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions.Default.copy(
-                    imeAction = ImeAction.Next
+                    imeAction = ImeAction.Next,
+                    keyboardType = KeyboardType.Password,
+                    autoCorrectEnabled = false
+
                 ),
                 keyboardActions = KeyboardActions(
                     onNext = { repeatPasswordFocusRequester.requestFocus() }
@@ -247,7 +252,9 @@ fun SignUpScreen(
                 },
                 visualTransformation = if (uiState.isRePasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions.Default.copy(
-                    imeAction = ImeAction.Done
+                    imeAction = ImeAction.Done,
+                    keyboardType = KeyboardType.Password,
+                    autoCorrectEnabled = false
                 ),
                 keyboardActions = KeyboardActions(
                     onDone = {

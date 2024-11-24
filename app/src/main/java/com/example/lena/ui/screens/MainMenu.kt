@@ -130,7 +130,13 @@ fun MainMenuTopBar(modifier: Modifier = Modifier) {
 @Composable
 fun MessageList(modifier: Modifier = Modifier, messageList: List<MessageModel>) {
     if (messageList.isEmpty()) {
-        Greetings()
+        Box(
+            modifier = Modifier
+                .fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Greetings()
+        }
     } else {
         LazyColumn(
             modifier = modifier.fillMaxSize(),
@@ -183,6 +189,7 @@ fun MessageRow(messageModel: MessageModel) {
 fun MessageInput(onMessageSend: (String) -> Unit, modifier: Modifier = Modifier) {
     var message by remember { mutableStateOf("") }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -213,6 +220,7 @@ fun MessageInput(onMessageSend: (String) -> Unit, modifier: Modifier = Modifier)
                 keyboardController?.hide()
                 onMessageSend(message)
                 message = ""
+                focusManager.clearFocus()
             }
         }) {
             Icon(

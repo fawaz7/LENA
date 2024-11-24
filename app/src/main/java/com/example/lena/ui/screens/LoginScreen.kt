@@ -25,11 +25,13 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -43,6 +45,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
@@ -57,6 +60,7 @@ import com.example.lena.ui.rememberImeState
 import com.example.lena.ui.theme.LENATheme
 import com.example.lena.viewModels.LoginViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     navController: NavController,
@@ -164,14 +168,23 @@ fun LoginScreen(
             },
             visualTransformation = if (uiState.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions.Default.copy(
-                imeAction = ImeAction.Done
+                imeAction = ImeAction.Done,
+                keyboardType = KeyboardType.Password,
+                autoCorrectEnabled = false
             ),
-            keyboardActions = KeyboardActions(
+            keyboardActions =
+            KeyboardActions(
                 onDone = {
                     viewModel.login {
                         navController.navigate(Screens.MainMenu.name)
                     }
                 }
+            ),
+            singleLine = true,
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.secondary,
+
             )
         )
         uiState.error?.let { error ->
