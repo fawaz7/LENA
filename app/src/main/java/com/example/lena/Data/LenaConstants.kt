@@ -41,4 +41,26 @@ object LenaConstants {
         "Hello! Lena here, ready to assist you. What's on your agenda?",
         "Greetings! I'm Lena, your personal AI assistant. How can I assist you today?"
     )
+
+    val textInputPrompts = listOf(
+        "Ask Anything!",
+        "How can I help you?",
+        "What's on your mind?",
+        "What can I do for you today?",
+        "I'm ready when you are!",
+        "Let's get started!",
+        "What are we working on today?",
+        "Need a hand with something?",
+        "I'm here to assist.",
+        "Feel free to ask anything.",
+        "Let's make something awesome!",
+        "What's your next big idea?",
+        "I'm all ears!",
+        "Let's collaborate!",
+        "How can I make your day better?",
+        "I'm your creative partner.",
+        "Let's brainstorm!",
+        "What are you curious about?",
+        "I'm here to help you succeed.",
+    )
 }

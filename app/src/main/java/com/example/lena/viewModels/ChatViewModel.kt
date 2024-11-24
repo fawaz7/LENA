@@ -1,13 +1,10 @@
 package com.example.lena.viewModels
 
-import android.R.attr.text
 import android.util.Log
-import android.util.Log.e
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.lena.BuildConfig
-import com.example.lena.Data.Constants
 import com.example.lena.Data.LenaConstants.thinkingStrings
 import com.example.lena.Models.MessageModel
 import com.google.ai.client.generativeai.GenerativeModel
@@ -28,7 +25,6 @@ class ChatViewModel : ViewModel() {
     fun sendMessage(prompt: String) {
         viewModelScope.launch {
             try {
-
                 val randomThinkingString = thinkingStrings.random()
 
                 val chat = generativeModel.startChat(
@@ -38,19 +34,18 @@ class ChatViewModel : ViewModel() {
                 )
 
                 messageList.add(MessageModel(prompt, "user"))
-                messageList.add(MessageModel(randomThinkingString, "Lena"))
+                messageList.add(MessageModel(randomThinkingString, "model"))
 
                 val response = chat.sendMessage(prompt)
                 messageList.removeAt(messageList.lastIndex)
 
-                messageList.add(MessageModel(response.text.toString(), "Lena"))
+                messageList.add(MessageModel(response.text.toString(), "model"))
                 Log.d("ChatViewModel", "Response: ${response.text}")
             } catch (e: Exception) {
                 messageList.removeAt(messageList.lastIndex)
-                messageList.add(MessageModel("Sorry, something went wrong.", "Lena"))
+                messageList.add(MessageModel("Sorry, something went wrong.", "model"))
                 Log.e("ChatViewModel", "Error sending message: ${e.message}")
             }
         }
     }
 }
-
