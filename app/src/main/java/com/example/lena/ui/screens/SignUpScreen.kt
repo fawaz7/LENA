@@ -5,6 +5,9 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -65,13 +68,14 @@ import com.example.lena.ui.rememberImeState
 import com.example.lena.ui.theme.Gray800
 import com.example.lena.ui.theme.Gray900
 import com.example.lena.ui.theme.LENATheme
+import com.example.lena.viewModels.AuthViewModel
 import com.example.lena.viewModels.SignUpViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignUpScreen(
     navController: NavController,
-    viewModel: SignUpViewModel = viewModel(),
+    viewModel: AuthViewModel ,
     modifier: Modifier = Modifier
 ) {
     var isRePasswordFocused by remember { mutableStateOf(false) }
@@ -82,8 +86,11 @@ fun SignUpScreen(
     val passwordFocusRequester = FocusRequester()
     val repeatPasswordFocusRequester = FocusRequester()
     val keyboardController = LocalSoftwareKeyboardController.current
-    val uiState by viewModel.uiState.collectAsState()
+    //===================================
+    //val uiState by viewModel.uiState.collectAsState()
+    //===================================
     val context = LocalContext.current
+    val authState = viewModel.authState.observeAsState()
 
     val textSize by animateFloatAsState(targetValue = if (isImeVisible) 32f else 28f, animationSpec = tween(durationMillis = 300),
         label = "TextSize Animation"
@@ -149,6 +156,7 @@ fun SignUpScreen(
                     modifier = Modifier.padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+//=============================================================================-----> Username field
                     OutlinedTextField(
                         value = uiState.username,
                         onValueChange = { viewModel.onUsernameChange(it) },
@@ -185,7 +193,7 @@ fun SignUpScreen(
                             focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
-
+//=============================================================================-----> Email field
                     OutlinedTextField(
                         value = uiState.email,
                         onValueChange = { viewModel.onEmailChange(it) },
@@ -221,7 +229,7 @@ fun SignUpScreen(
                             focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
-
+//=============================================================================-----> Password field
                     OutlinedTextField(
                         value = uiState.password,
                         onValueChange = { viewModel.onPasswordChange(it) },
@@ -265,7 +273,7 @@ fun SignUpScreen(
                             focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
-
+//=============================================================================-----> Re-enter Password field
                     OutlinedTextField(
                         value = uiState.rePassword,
                         onValueChange = { viewModel.onRePasswordChange(it) },
@@ -315,13 +323,12 @@ fun SignUpScreen(
                     )
                 }
             }
-
+//=============================================================================-----> Finish the Sign Up
             Button(
                 onClick = {
-                    viewModel.signUp {
-                        Toast.makeText(context, "Sign up successful!", Toast.LENGTH_SHORT).show()
-                    }
+                    viewModel.signUp(email = /*TODO*/, password = /*TODO*/))
                     keyboardController?.hide()
+                    //viewModel.signUp {Toast.makeText(context, "Sign up successful!", Toast.LENGTH_SHORT).show() }
                 },
                 enabled = uiState.isFormValid,
                 colors = ButtonDefaults.buttonColors(

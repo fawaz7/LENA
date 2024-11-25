@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.gms.google.services)
 }
 
 
@@ -49,9 +50,10 @@ android {
 }
 
 dependencies {
+    implementation(libs.firebase.auth)
     val nav_version = "2.8.3"
     val ai_version = "0.9.0"
-    val materiaIcon_version = "1.7.5"
+    val compose_version = "1.7.5"
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -67,9 +69,10 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+    implementation("androidx.compose.runtime:runtime-livedata:$compose_version")
     implementation("com.google.ai.client.generativeai:generativeai:$ai_version")
     implementation("androidx.navigation:navigation-compose:$nav_version")
-    implementation ("androidx.compose.material:material-icons-extended:$materiaIcon_version")
+    implementation ("androidx.compose.material:material-icons-extended:$compose_version")
 }
 
 

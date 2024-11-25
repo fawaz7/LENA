@@ -64,6 +64,7 @@ import com.example.lena.ui.rememberImeState
 import com.example.lena.ui.theme.Gray800
 import com.example.lena.ui.theme.Gray900
 import com.example.lena.ui.theme.LENATheme
+import com.example.lena.viewModels.AuthViewModel
 import com.example.lena.viewModels.LoginViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)

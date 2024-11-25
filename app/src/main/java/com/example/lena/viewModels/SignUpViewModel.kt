@@ -21,7 +21,7 @@ data class SignUpState(
     val successfulSignUp: Boolean = false
 )
 
-class SignUpViewModel : ViewModel() {
+class SignUpViewModel(private val authViewModel: AuthViewModel) : ViewModel() {
     private val _uiState = MutableStateFlow(SignUpState())
     val uiState: StateFlow<SignUpState> = _uiState.asStateFlow()
 

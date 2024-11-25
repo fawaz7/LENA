@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "410797294892",
+    "project_id": "lena-graduation-project",
+    "storage_bucket": "lena-graduation-project.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:410797294892:android:28240927872f1283195889",
+        "android_client_info": {
+          "package_name": "com.example.lena"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCqr10LKNJNkmvXq_ywuPstDWyRpl7l5BQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

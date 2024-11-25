@@ -13,7 +13,7 @@ data class LoginState(
     val error: String? = null
 )
 
-class LoginViewModel : ViewModel() {
+class LoginViewModel(private val authViewModel: AuthViewModel) : ViewModel() {
     private val _uiState = MutableStateFlow(LoginState())
     val uiState: StateFlow<LoginState> = _uiState
 
@@ -42,5 +42,3 @@ class LoginViewModel : ViewModel() {
         return _uiState.value.username.isNotBlank() && _uiState.value.password.isNotBlank()
     }
 }
-
-
