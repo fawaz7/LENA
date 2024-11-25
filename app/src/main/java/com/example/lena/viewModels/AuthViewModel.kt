@@ -7,9 +7,6 @@ import com.google.firebase.auth.FirebaseAuth
 
 
 
-
-
-
 class AuthViewModel : ViewModel() { //Remember to link it to the LoginScreen
 
     private val auth : FirebaseAuth = FirebaseAuth.getInstance()

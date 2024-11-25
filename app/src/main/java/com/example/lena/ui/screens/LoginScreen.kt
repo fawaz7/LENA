@@ -1,5 +1,6 @@
 package com.example.lena.ui.screens
 
+import android.widget.Toast
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -36,8 +37,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -45,6 +51,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -64,6 +71,7 @@ import com.example.lena.ui.rememberImeState
 import com.example.lena.ui.theme.Gray800
 import com.example.lena.ui.theme.Gray900
 import com.example.lena.ui.theme.LENATheme
+import com.example.lena.viewModels.AuthState
 import com.example.lena.viewModels.AuthViewModel
 import com.example.lena.viewModels.LoginViewModel
 
@@ -71,14 +79,16 @@ import com.example.lena.viewModels.LoginViewModel
 @Composable
 fun LoginScreen(
     navController: NavController,
-    viewModel: LoginViewModel = viewModel(),
+    authViewModel: AuthViewModel ,
     modifier: Modifier = Modifier) {
 
-    val uiState by viewModel.uiState.collectAsState()
+   // val uiState by authViewModel.uiState.collectAsState()
     val isImeVisible by rememberImeState()
     val focusManager = LocalFocusManager.current
     val usernameFocusRequester = FocusRequester()
     val passwordFocusRequester = FocusRequester()
+    val context = LocalContext.current
+    val authState = authViewModel.authState.observeAsState()
 
     val logoSize by animateDpAsState(targetValue = if (isImeVisible) 80.dp else 270.dp, animationSpec = tween(durationMillis = 300),
         label = "LogoSize Animation"
@@ -95,6 +105,19 @@ fun LoginScreen(
     val subSpacerHeight by animateDpAsState(targetValue = if (isImeVisible) 4.dp else 20.dp, animationSpec = tween(durationMillis = 300),
         label = "subSpacerHeight Animation"
     )
+
+    LaunchedEffect(authState.value) {
+        when (authState.value) {
+            is AuthState.Authenticated -> {
+                navController.navigate(Screens.MainMenu.name)
+            }
+            is AuthState.Error -> {
+                Toast.makeText(context, (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
+            }
+            else -> Unit
+
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -166,20 +189,22 @@ fun LoginScreen(
 
             Spacer(modifier.height(20.dp))
             //=================================--> Username
+            var email by remember { mutableStateOf("") }
             OutlinedTextField(
-                value = uiState.username,
+                value = email,
 
                 onValueChange = {
-                    viewModel.onUsernameChange(it)
+                    email = it
                 },
                 label = { Text(text = "Username") },
                 modifier = Modifier
                     .focusRequester(usernameFocusRequester)
+                    /*
                     .onFocusChanged { focusState ->
                     if (!focusState.isFocused) {
-                        viewModel.onUsernameChange(uiState.username.trim())
+                        authViewModel.onUsernameChange(uiState.username.trim())
                     }
-                },
+                }*/,
                 trailingIcon = { Icon(
                     imageVector = Icons.Default.AccountCircle,
                     contentDescription = "Username Icon"
@@ -202,20 +227,22 @@ fun LoginScreen(
                 )
             )
             //====================================--> Password
+            var password by remember { mutableStateOf("") }
             OutlinedTextField(
-                value = uiState.password,
-                onValueChange = { viewModel.onPasswordChange(it) },
+
+                value = password,
+                onValueChange = { password = it },
                 label = { Text(text = "Password") },
                 modifier = Modifier.focusRequester(passwordFocusRequester),
-                trailingIcon = {
-                    IconButton(onClick = { viewModel.togglePasswordVisibility() }) {
-                        Icon(
-                            imageVector = if (uiState.isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                            contentDescription = if (uiState.isPasswordVisible) "Hide Password" else "Show Password"
-                        )
-                    }
-                },
-                visualTransformation = if (uiState.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+//                trailingIcon = {
+//                    IconButton(onClick = { authViewModel.togglePasswordVisibility() }) {
+//                        Icon(
+//                            imageVector = if (uiState.isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+//                            contentDescription = if (uiState.isPasswordVisible) "Hide Password" else "Show Password"
+//                        )
+//                    }
+//                },
+               // visualTransformation = if (uiState.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions.Default.copy(
                     imeAction = ImeAction.Done,
                     keyboardType = KeyboardType.Password,
@@ -224,9 +251,7 @@ fun LoginScreen(
                 keyboardActions =
                 KeyboardActions(
                     onDone = {
-                        viewModel.login {
-                            navController.navigate(Screens.MainMenu.name)
-                        }
+                        authViewModel.login(email,password)
                     }
                 ),
                 singleLine = true,
@@ -235,27 +260,25 @@ fun LoginScreen(
                     focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
-            uiState.error?.let { error ->
-                Text(text = error,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
-            }
+//            uiState.error?.let { error ->
+//                Text(text = error,
+//                    color = MaterialTheme.colorScheme.error,
+//                    style = MaterialTheme.typography.bodySmall,
+//                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
+//            }
 
             Button(
                 onClick = {
-                    viewModel.login {
-                        navController.navigate(Screens.MainMenu.name)
-                    }
+                    authViewModel.login(email,password)
                 },
-                enabled = viewModel.validateInputs(),
+                enabled = true,/*authViewModel.validateInputs(),*/
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     disabledContainerColor = Gray900,
                     disabledContentColor = Gray800,
                 ),
-                modifier = modifier.padding(if (uiState.isValid) 8.dp else {0.dp})
+//                modifier = modifier.padding(if (uiState.isValid) 8.dp else {0.dp})
 
             ) {
                 Text(text = "Login")
@@ -285,6 +308,6 @@ fun LoginScreen(
 @Composable
 fun LoginScreenPreview(){
     LENATheme(darkTheme = true) {
-        LoginScreen(navController = rememberNavController())
+        LoginScreen(navController = rememberNavController(), AuthViewModel())
     }
 }

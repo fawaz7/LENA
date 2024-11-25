@@ -1,6 +1,8 @@
 package com.example.lena
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -8,6 +10,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.lena.ui.screens.LoginScreen
 import com.example.lena.ui.screens.MainMenu
 import com.example.lena.ui.screens.SignUpScreen
+import com.example.lena.viewModels.AuthViewModel
 
 enum class Screens{
     LoginScreen,
@@ -16,17 +19,19 @@ enum class Screens{
 }
 
 @Composable
-fun LenaAppNavigation(){
+fun LenaAppNavigation(viewModel: AuthViewModel){
+
     val navController: NavHostController = rememberNavController()
+
     NavHost(navController = navController, startDestination = Screens.LoginScreen.name) {
         composable(Screens.LoginScreen.name) {
-            LoginScreen(navController)
+            LoginScreen(navController, authViewModel = viewModel)
         }
         composable(Screens.MainMenu.name) {
-            MainMenu(navController)
+            MainMenu(navController, authViewModel = viewModel)
         }
         composable(Screens.SignUpScreen.name){
-            SignUpScreen(navController)
+            SignUpScreen(navController =  navController, viewModel = viewModel)
         }
     }
 }

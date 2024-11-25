@@ -3,7 +3,7 @@ package com.example.lena.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +24,8 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,9 +35,10 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -52,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -59,17 +63,31 @@ import androidx.navigation.compose.rememberNavController
 import com.example.lena.Data.LenaConstants.greetingStrings
 import com.example.lena.Models.MessageModel
 import com.example.lena.R
+import com.example.lena.Screens
 import com.example.lena.ui.theme.LENATheme
+import com.example.lena.viewModels.AuthState
+import com.example.lena.viewModels.AuthViewModel
 import com.example.lena.viewModels.ChatViewModel
 
 
 @Composable
-fun MainMenu(navController: NavController) {
+fun MainMenu(navController: NavController, authViewModel: AuthViewModel) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val chatViewModel: ChatViewModel = viewModel()
+    val authState = authViewModel.authState.observeAsState()
+
+    LaunchedEffect(authState.value) {
+        when(authState.value) {
+            is AuthState.Unauthenticated -> navController.navigate(Screens.LoginScreen.name)
+            else -> Unit
+        }
+    }
+
+
+
     Scaffold(
-        topBar = { MainMenuTopBar() }
+        topBar = { MainMenuTopBar(viewModel = authViewModel) }
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -109,7 +127,8 @@ fun MainMenu(navController: NavController) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainMenuTopBar(modifier: Modifier = Modifier) {
+fun MainMenuTopBar(modifier: Modifier = Modifier, viewModel: AuthViewModel) {
+    var optionsMenu by remember { mutableStateOf(false) }
     TopAppBar(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -121,8 +140,24 @@ fun MainMenuTopBar(modifier: Modifier = Modifier) {
                 Image(
                     painter = painterResource(id = R.drawable.medusa_white),
                     contentDescription = stringResource(R.string.Logo),
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(36.dp).clickable(
+                        onClick = {
+                            optionsMenu = !optionsMenu
+                        }
+                    )
                 )
+                DropdownMenu(
+                    expanded = optionsMenu,
+                    onDismissRequest = { optionsMenu = false },
+                    offset = DpOffset(500.dp, 0.dp)
+                ){
+                    DropdownMenuItem(
+                        onClick = {
+                            viewModel.signOut()
+                        },
+                        text = { Text(text = "Logout") }
+                    )
+                }
             }
         },
         modifier = modifier
@@ -271,7 +306,7 @@ fun Greetings(){
 fun MainMenuPreview() {
     LENATheme {
         val navController = rememberNavController()
-        MainMenu(navController)
+        MainMenu(navController, AuthViewModel())
     }}
 
 @Preview
