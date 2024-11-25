@@ -1,6 +1,5 @@
 package com.example.lena.ui.screens
 
-
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -8,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,8 +30,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -39,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
@@ -57,6 +61,8 @@ import androidx.navigation.compose.rememberNavController
 import com.example.lena.R
 import com.example.lena.Screens
 import com.example.lena.ui.rememberImeState
+import com.example.lena.ui.theme.Gray800
+import com.example.lena.ui.theme.Gray900
 import com.example.lena.ui.theme.LENATheme
 import com.example.lena.viewModels.LoginViewModel
 
@@ -73,159 +79,211 @@ fun LoginScreen(
     val usernameFocusRequester = FocusRequester()
     val passwordFocusRequester = FocusRequester()
 
-    val logoSize by animateDpAsState(targetValue = if (isImeVisible) 80.dp else 270.dp, animationSpec = tween(durationMillis = 300))
-    val textSize by animateFloatAsState(targetValue = if (isImeVisible) 34f else 28f, animationSpec = tween(durationMillis = 300))
-    val subTextSize by animateFloatAsState(targetValue = if (isImeVisible) 20f else 16f, animationSpec = tween(durationMillis = 300))
-    val spacerHeight by animateDpAsState(targetValue = if (isImeVisible) 0.dp else 40.dp, animationSpec = tween(durationMillis = 300))
-    val subSpacerHeight by animateDpAsState(targetValue = if (isImeVisible) 4.dp else 20.dp, animationSpec = tween(durationMillis = 300))
+    val logoSize by animateDpAsState(targetValue = if (isImeVisible) 80.dp else 270.dp, animationSpec = tween(durationMillis = 300),
+        label = "LogoSize Animation"
+    )
+    val textSize by animateFloatAsState(targetValue = if (isImeVisible) 34f else 28f, animationSpec = tween(durationMillis = 300),
+        label = "TextSize Animation"
+    )
+    val subTextSize by animateFloatAsState(targetValue = if (isImeVisible) 20f else 16f, animationSpec = tween(durationMillis = 300),
+        label = "subTextSize Animation"
+    )
+    val spacerHeight by animateDpAsState(targetValue = if (isImeVisible) 0.dp else 40.dp, animationSpec = tween(durationMillis = 300),
+        label = "SpacerHeight Animation"
+    )
+    val subSpacerHeight by animateDpAsState(targetValue = if (isImeVisible) 4.dp else 20.dp, animationSpec = tween(durationMillis = 300),
+        label = "subSpacerHeight Animation"
+    )
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier
-            .fillMaxWidth()
-            .pointerInput(Unit){detectTapGestures(onTap = {focusManager.clearFocus()})}
-    ) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { },
+                colors = TopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    actionIconContentColor = MaterialTheme.colorScheme.onBackground,
+                    scrolledContainerColor = MaterialTheme.colorScheme.onBackground,
+                ),
+                modifier = modifier.height(64.dp)
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(innerPadding)
+                .pointerInput(Unit) { detectTapGestures(onTap = { focusManager.clearFocus() }) }
+        ) {
 
-
-        Spacer(modifier = modifier.height(68.dp).fillMaxWidth())
-
-        Crossfade(targetState = isImeVisible, label = "Image change animation") { isKeyboardVisible ->
-            Box(modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                when (isKeyboardVisible) {
-                    false -> {
-                        Image(
-                            painter = painterResource(id = R.drawable.full_logo_black),
-                            contentDescription = "Default Logo",
-                            modifier = Modifier.size(logoSize).align(Alignment.Center)
-                        )
-                    }
-                    true -> {
-                        Image(
-                            painter = painterResource(id = R.drawable.medusa_black),
-                            contentDescription = "Keyboard Active Logo",
-                            modifier = Modifier.size(logoSize).align(Alignment.Center)
-                        )
+            Crossfade(targetState = isImeVisible, label = "Image change animation") { isKeyboardVisible ->
+                Box(modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                    when (isKeyboardVisible) {
+                        false -> {
+                            Image(
+                                painter = painterResource(id = if (isSystemInDarkTheme()) R.drawable.full_logo_white else R.drawable.full_logo_black),
+                                contentDescription = "Default Logo",
+                                modifier = Modifier.size(logoSize).align(Alignment.Center)
+                            )
+                        }
+                        true -> {
+                            Image(
+                                painter = painterResource(id = if (isSystemInDarkTheme()) R.drawable.medusa_white else R.drawable.medusa_black),
+                                contentDescription = "Keyboard Active Logo",
+                                modifier = Modifier.size(logoSize).align(Alignment.Center)
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        Spacer(modifier.height(28.dp))
+            Spacer(modifier.height(28.dp))
 
-
-        Crossfade(targetState = isImeVisible, label = "Welcome Screen Label") {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Spacer(modifier.height(spacerHeight))
-                Text(
-                    text = "Welcome Back!",
-                    fontWeight = if (!it) FontWeight.Bold else FontWeight.Light,
-                    fontSize = textSize.sp,
-                    modifier = Modifier
-                )
-                Text(
-                    text = "Login to your account",
-                    fontWeight = if (it) FontWeight.Bold else FontWeight.Light,
-                    fontSize = subTextSize.sp,
-                    modifier = Modifier
-                )
-                Spacer(modifier.height(subSpacerHeight))
-            }
-        }
-
-        Spacer(modifier.height(20.dp))
-        OutlinedTextField(
-            value = uiState.username,
-            onValueChange = {
-                viewModel.onUsernameChange(it)
-                            },
-            label = { Text(text = "Username") },
-            modifier = Modifier.focusRequester(usernameFocusRequester),
-            trailingIcon = {Icon(
-                imageVector = Icons.Default.AccountCircle,
-                contentDescription = "Username Icon"
-            )
-            },
-            keyboardOptions = KeyboardOptions.Default.copy(
-                imeAction = ImeAction.Next
-            ),
-            keyboardActions = KeyboardActions(
-                onNext = { passwordFocusRequester.requestFocus() }
-            )
-        )
-        OutlinedTextField(
-            value = uiState.password,
-            onValueChange = {viewModel.onPasswordChange(it)},
-            label = { Text(text = "Password") },
-            modifier = Modifier.focusRequester(passwordFocusRequester),
-            trailingIcon = {
-                IconButton(onClick = { viewModel.togglePasswordVisibility() }) {
-                    Icon(
-                        imageVector = if (uiState.isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                        contentDescription = if (uiState.isPasswordVisible) "Hide Password" else "Show Password"
+            Crossfade(targetState = isImeVisible, label = "Welcome Screen Label") {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Spacer(modifier.height(spacerHeight))
+                    Text(
+                        text = "Welcome Back!",
+                        fontWeight = if (!it) FontWeight.Bold else FontWeight.Light,
+                        fontSize = textSize.sp,
+                        color = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier,
                     )
+                    Text(
+                        text = "Login to your account",
+                        fontWeight = if (it) FontWeight.Bold else FontWeight.Light,
+                        fontSize = subTextSize.sp,
+                        color = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier
+                    )
+                    Spacer(modifier.height(subSpacerHeight))
                 }
-            },
-            visualTransformation = if (uiState.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions.Default.copy(
-                imeAction = ImeAction.Done,
-                keyboardType = KeyboardType.Password,
-                autoCorrectEnabled = false
-            ),
-            keyboardActions =
-            KeyboardActions(
-                onDone = {
+            }
+
+            Spacer(modifier.height(20.dp))
+            //=================================--> Username
+            OutlinedTextField(
+                value = uiState.username,
+
+                onValueChange = {
+                    viewModel.onUsernameChange(it)
+                },
+                label = { Text(text = "Username") },
+                modifier = Modifier
+                    .focusRequester(usernameFocusRequester)
+                    .onFocusChanged { focusState ->
+                    if (!focusState.isFocused) {
+                        viewModel.onUsernameChange(uiState.username.trim())
+                    }
+                },
+                trailingIcon = { Icon(
+                    imageVector = Icons.Default.AccountCircle,
+                    contentDescription = "Username Icon"
+                )
+                },
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = {
+                        passwordFocusRequester.requestFocus()
+
+                    }
+                ),
+
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            )
+            //====================================--> Password
+            OutlinedTextField(
+                value = uiState.password,
+                onValueChange = { viewModel.onPasswordChange(it) },
+                label = { Text(text = "Password") },
+                modifier = Modifier.focusRequester(passwordFocusRequester),
+                trailingIcon = {
+                    IconButton(onClick = { viewModel.togglePasswordVisibility() }) {
+                        Icon(
+                            imageVector = if (uiState.isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                            contentDescription = if (uiState.isPasswordVisible) "Hide Password" else "Show Password"
+                        )
+                    }
+                },
+                visualTransformation = if (uiState.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    imeAction = ImeAction.Done,
+                    keyboardType = KeyboardType.Password,
+                    autoCorrectEnabled = false
+                ),
+                keyboardActions =
+                KeyboardActions(
+                    onDone = {
+                        viewModel.login {
+                            navController.navigate(Screens.MainMenu.name)
+                        }
+                    }
+                ),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            )
+            uiState.error?.let { error ->
+                Text(text = error,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
+            }
+
+            Button(
+                onClick = {
                     viewModel.login {
                         navController.navigate(Screens.MainMenu.name)
                     }
-                }
-            ),
-            singleLine = true,
-            colors = TextFieldDefaults.outlinedTextFieldColors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.secondary,
+                },
+                enabled = viewModel.validateInputs(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = Gray900,
+                    disabledContentColor = Gray800,
+                ),
+                modifier = modifier.padding(if (uiState.isValid) 8.dp else {0.dp})
 
+            ) {
+                Text(text = "Login")
+            }
+
+            Text(
+                text = "Forgot Password",
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.clickable(onClick = { /*TODO*/ })
             )
-        )
-        uiState.error?.let { error ->
-            Text(text = error,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
+            Row {
+                Text(
+                    text = "Don't have an account?",
+                    color = Color.Gray
+                )
+                Text(
+                    text = " Sign Up",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.clickable(onClick = { navController.navigate(Screens.SignUpScreen.name) })
+                )
+            }
         }
-
-        Button(
-            onClick = {
-                viewModel.login {
-                    navController.navigate(Screens.MainMenu.name)
-                }
-            },
-            enabled = viewModel.validateInputs(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.Black // Change this to your desired color
-            ),
-            modifier = modifier.padding(if (uiState.isValid) 8.dp else {0.dp})
-
-        ) {
-            Text(text = "Login")
-        }
-
-        Text(
-            text = "Forgot Password?", modifier = Modifier.clickable(onClick = { /*TODO*/ }))
-        Row{
-            Text(text = "Don't have an account?", color = Color.Gray)
-            Text(text = " Sign Up", modifier = Modifier.clickable(onClick = { navController.navigate(
-                Screens.SignUpScreen.name) }))
-        }
-
     }
 }
 
-
-@Preview (showSystemUi = true)
+@Preview(showSystemUi = true )
 @Composable
 fun LoginScreenPreview(){
-    LENATheme {
+    LENATheme(darkTheme = true) {
         LoginScreen(navController = rememberNavController())
     }
 }

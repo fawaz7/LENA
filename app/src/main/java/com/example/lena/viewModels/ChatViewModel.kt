@@ -33,13 +33,13 @@ class ChatViewModel : ViewModel() {
                     }.toList()
                 )
 
-                messageList.add(MessageModel(prompt, "user"))
+                messageList.add(MessageModel(prompt.trimEnd(' '), "user"))
                 messageList.add(MessageModel(randomThinkingString, "model"))
 
                 val response = chat.sendMessage(prompt)
                 messageList.removeAt(messageList.lastIndex)
 
-                messageList.add(MessageModel(response.text.toString(), "model"))
+                messageList.add(MessageModel(response.text.toString().trimEnd('\n'), "model"))
                 Log.d("ChatViewModel", "Response: ${response.text}")
             } catch (e: Exception) {
                 messageList.removeAt(messageList.lastIndex)

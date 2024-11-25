@@ -23,7 +23,6 @@ val DarkOnBackground = Color(0xFFE5E5E5) // Light grey for text on dark backgrou
 val DarkOnSurface = Color(0xFFE5E5E5) // Light grey text/icons on surface elements
 val DarkOutline = Color(0xFF3C3C3C) // Neutral grey for outline
 
-
 // Shades of Gray
 val Gray100 = Color(0xFFF5F5F5)
 val Gray200 = Color(0xFFEEEEEE)

@@ -2,8 +2,10 @@ package com.example.lena.ui.screens
 
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,7 +13,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,7 +27,9 @@ import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -38,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
@@ -121,7 +125,6 @@ fun MainMenuTopBar(modifier: Modifier = Modifier) {
                 )
             }
         },
-        colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = Color.Black),
         modifier = modifier
     )
 }
@@ -165,12 +168,11 @@ fun MessageRow(messageModel: MessageModel) {
                         top = 8.dp,
                         bottom = 8.dp
                     )
-                    .border(
-                        width = 2.dp,
-                        color = if (isModel) Color.Blue else Color.Gray,
-                        shape = RoundedCornerShape(8.dp)
+                    .clip(RoundedCornerShape(48f))
+                    .background(
+                        if (isModel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
                     )
-                    .padding(16.dp)
+                    .padding(8.dp)
             ) {
                 SelectionContainer {
                     Text(
@@ -209,16 +211,20 @@ fun MessageInput(onMessageSend: (String) -> Unit, modifier: Modifier = Modifier)
             keyboardActions = KeyboardActions(
                 onDone = {
                     if (message.isNotBlank()) {
-                        onMessageSend(message)
+                        onMessageSend(message.trimEnd(' '))
                         message = ""
                     }
                 }
+            ),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
             )
         )
         IconButton(onClick = {
             if (message.isNotBlank()) {
                 keyboardController?.hide()
-                onMessageSend(message)
+                onMessageSend(message.trimEnd(' '))
                 message = ""
                 focusManager.clearFocus()
             }
@@ -243,7 +249,7 @@ fun Greetings(){
             verticalArrangement = Arrangement.Center
         ) {
             Image(
-                painter = painterResource(id = R.drawable.medusa_black),
+                painter = painterResource(id = if (isSystemInDarkTheme()) R.drawable.medusa_white else R.drawable.medusa_black),
                 contentDescription = stringResource(R.string.Logo),
                 modifier = Modifier
                     .size(100.dp)

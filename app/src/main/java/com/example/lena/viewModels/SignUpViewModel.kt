@@ -37,7 +37,7 @@ class SignUpViewModel : ViewModel() {
     fun onEmailChange(newEmail: String) {
         val isEmailValid = validateEmail(newEmail)
         _uiState.value = _uiState.value.copy(
-            email = newEmail,
+            email = newEmail.trim(),
             emailError = newEmail.isBlank() || !isEmailValid
         )
         validateForm()
