@@ -112,6 +112,10 @@ fun LoginScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        authViewModel.resetUiState()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -253,8 +257,8 @@ fun LoginScreen(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
-                    disabledContainerColor = Gray900,
-                    disabledContentColor = Gray800,
+                    disabledContainerColor = if (isSystemInDarkTheme()) Gray900 else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                    disabledContentColor = if (isSystemInDarkTheme()) Gray800 else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                 ),
             ) {
                 if (authState.value == AuthState.Loading) {
@@ -283,7 +287,10 @@ fun LoginScreen(
                     text = " Sign Up",
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 12.sp,
-                    modifier = Modifier.clickable(onClick = { navController.navigate(Screens.SignUpScreen.name) })
+                    modifier = Modifier.clickable(onClick = {
+                        navController.navigate(Screens.SignUpScreen.name)
+                        authViewModel.resetUiState()
+                    })
                 )
             }
         }

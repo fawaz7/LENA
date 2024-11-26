@@ -1,6 +1,9 @@
 package com.example.lena.ui.screens
 
 
+import android.app.Activity
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,18 +38,21 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -68,6 +74,8 @@ import com.example.lena.ui.theme.LENATheme
 import com.example.lena.viewModels.AuthState
 import com.example.lena.viewModels.AuthViewModel
 import com.example.lena.viewModels.ChatViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 
 @Composable
@@ -75,12 +83,30 @@ fun MainMenu(navController: NavController, authViewModel: AuthViewModel) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val chatViewModel: ChatViewModel = viewModel()
+    var backPressedOnce by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
     val authState = authViewModel.authState.observeAsState()
+    val context = LocalContext.current
+    val activity = context as? Activity
 
     LaunchedEffect(authState.value) {
         when(authState.value) {
             is AuthState.Unauthenticated -> navController.navigate(Screens.LoginScreen.name)
             else -> Unit
+        }
+    }
+
+    BackHandler(enabled = authState.value is AuthState.Authenticated) {
+        if (backPressedOnce) {
+            // Exit the app
+            activity?.finish()
+        } else {
+            backPressedOnce = true
+            Toast.makeText(context, "Press back again to exit", Toast.LENGTH_SHORT).show()
+            coroutineScope.launch {
+                delay(2000)  // 2 seconds to reset the flag
+                backPressedOnce = false
+            }
         }
     }
 
@@ -134,33 +160,41 @@ fun MainMenuTopBar(modifier: Modifier = Modifier, viewModel: AuthViewModel) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = stringResource(R.string.Chat_menu),
-                    color = Color.White,
+                    color = if (isSystemInDarkTheme()) Color.White else Color.Black,
                     modifier = Modifier.weight(0.8f)
                 )
                 Image(
-                    painter = painterResource(id = R.drawable.medusa_white),
+                    painter = painterResource(id = if (isSystemInDarkTheme()) R.drawable.medusa_white else R.drawable.medusa_black),
                     contentDescription = stringResource(R.string.Logo),
                     modifier = Modifier.size(36.dp).clickable(
                         onClick = {
                             optionsMenu = !optionsMenu
                         }
-                    )
+                    ).weight(0.2f)
                 )
                 DropdownMenu(
                     expanded = optionsMenu,
                     onDismissRequest = { optionsMenu = false },
-                    offset = DpOffset(500.dp, 0.dp)
+                    offset = DpOffset(500.dp, 0.dp),
+                    modifier = Modifier.background(
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
                 ){
                     DropdownMenuItem(
-                        onClick = {
-                            viewModel.signOut()
-                        },
-                        text = { Text(text = "Logout") }
+                        onClick = { viewModel.signOut() },
+                        text = { Text(text = "Logout") },
+
                     )
                 }
             }
         },
-        modifier = modifier
+        modifier = modifier,
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.background,
+            titleContentColor = MaterialTheme.colorScheme.onBackground,
+            actionIconContentColor = MaterialTheme.colorScheme.onBackground,
+            navigationIconContentColor = MaterialTheme.colorScheme.onBackground
+        )
     )
 }
 
@@ -205,14 +239,19 @@ fun MessageRow(messageModel: MessageModel) {
                     )
                     .clip(RoundedCornerShape(48f))
                     .background(
-                        if (isModel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                        if (isModel) {
+                            if (isSystemInDarkTheme()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary
+                        } else {
+                            if (isSystemInDarkTheme()) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onBackground
+                        }
                     )
                     .padding(8.dp)
             ) {
                 SelectionContainer {
                     Text(
                         text = messageModel.prompt,
-                        fontWeight = FontWeight.W500
+                        color = Color.White,
+                        fontWeight = FontWeight.W300,
                     )
                 }
             }
@@ -237,7 +276,7 @@ fun MessageInput(onMessageSend: (String) -> Unit, modifier: Modifier = Modifier)
             value = message,
             onValueChange = { message = it },
             label = { Text(stringResource(R.string.textField_label)) },
-            modifier = Modifier.weight(0.8f),
+            modifier = Modifier.weight(0.8f).imePadding(),
             maxLines = 4,
             singleLine = true,
             keyboardOptions = KeyboardOptions.Default.copy(

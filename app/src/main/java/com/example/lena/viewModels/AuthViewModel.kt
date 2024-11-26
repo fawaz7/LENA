@@ -86,15 +86,21 @@ class AuthViewModel : ViewModel() {
                 )
             }
             validateForm()
+            validateSignUpForm()
         }
     }
 
 
     fun onPasswordChange(newPassword: String) {
         _uiState.update {
-            it.copy(password = newPassword, passwordError = false)
+            it.copy(
+                password = newPassword,
+                passwordError = false,
+                repeatPasswordError = it.rePassword.isNotEmpty() && it.rePassword != newPassword
+            )
         }
         validateForm()
+        validateSignUpForm()
     }
 
     fun togglePasswordVisibility() {
@@ -140,7 +146,7 @@ class AuthViewModel : ViewModel() {
                 userNameError = newUsername.isBlank()
             )
         }
-        validateForm()
+        validateSignUpForm()
     }
 
 
@@ -151,7 +157,7 @@ class AuthViewModel : ViewModel() {
                 repeatPasswordError = newRePassword.isNotEmpty() && newRePassword != _uiState.value.password
             )
         }
-        validateForm()
+        validateSignUpForm()
     }
 
     fun toggleRePasswordVisibility() {
@@ -185,9 +191,9 @@ class AuthViewModel : ViewModel() {
     fun onPasswordFocusChanged(focused: Boolean) {
         if (!focused) {
             _uiState.update {
-                it.copy(passwordError = !validatePassword(it.password))
+                it.copy(passwordError = !validatePassword(it.password) && it.password.isNotBlank())
             }
-            validateForm()
+            validateSignUpForm()
         } else {
             _uiState.update {
                 it.copy(passwordError = false)
@@ -200,6 +206,10 @@ class AuthViewModel : ViewModel() {
     fun signOut(){
         auth.signOut()
         _authState.value = AuthState.Unauthenticated
+    }
+
+    fun resetUiState() {
+        _uiState.value = AuthUiState()
     }
 
 }

@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -121,6 +122,11 @@ fun SignUpScreen(
 
         }
     }
+
+    LaunchedEffect(Unit) {
+        viewModel.resetUiState()
+    }
+
 
     Scaffold(
         topBar = {
@@ -340,8 +346,8 @@ fun SignUpScreen(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
-                    disabledContainerColor = Gray900,
-                    disabledContentColor = Gray800,
+                    disabledContainerColor = if (isSystemInDarkTheme()) Gray900 else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                    disabledContentColor = if (isSystemInDarkTheme()) Gray800 else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                 ),
                 modifier = modifier.padding(8.dp)
             ) {
@@ -364,7 +370,9 @@ fun SignUpScreen(
                     text = " Sign In",
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.clickable(
-                        onClick = { navController.navigate(Screens.LoginScreen.name) },
+                        onClick = {
+                            navController.navigate(Screens.LoginScreen.name)
+                            viewModel.resetUiState()},
                     )
                 )
             }
