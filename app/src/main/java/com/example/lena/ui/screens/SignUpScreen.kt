@@ -17,11 +17,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -200,7 +198,7 @@ fun SignUpScreen(
                             supportingText = {
                                 if (uiState.firstNameError) {
                                     Text(
-                                        text = "First name can't be empty",
+                                        text = uiState.firstNameErrorMessage,
                                         color = MaterialTheme.colorScheme.error,
                                         style = MaterialTheme.typography.bodySmall,
                                     )
@@ -209,7 +207,7 @@ fun SignUpScreen(
                         )
                         OutlinedTextField(
                             value = uiState.lastName,
-                            onValueChange = { viewModel.onLastnameChange(it) },
+                            onValueChange = { viewModel.onLastNameChange(it) },
                             label = { Text(text = "Last Name", fontSize = 12.sp) },
                             modifier = Modifier
                                 .weight(1f)
@@ -225,11 +223,11 @@ fun SignUpScreen(
                                 focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                             ),
-                            isError = uiState.firstNameError,
+                            isError = uiState.lastNameError,
                             supportingText = {
                                 if (uiState.lastNameError) {
                                     Text(
-                                        text = "Last name can't be empty",
+                                        text = uiState.lastNameErrorMessage,
                                         color = MaterialTheme.colorScheme.error,
                                         style = MaterialTheme.typography.bodySmall,
                                     )
@@ -241,23 +239,23 @@ fun SignUpScreen(
 //=============================================================================-----> Username field
 //=============================================================================-----> Email field
                     OutlinedTextField(
-                        value = uiState.email,
-                        onValueChange = { viewModel.onEmailChange(it) },
+                        value = uiState.signUpEmail,
+                        onValueChange = { viewModel.onSignUpEmailChange(it) },
                         label = { Text(text = "Email") },
                         modifier = Modifier
                             .focusRequester(emailFocusRequester)
                             .onFocusChanged { focusState ->
                                 if (!focusState.isFocused) {
-                                    viewModel.onEmailFocusChanged(focusState.isFocused)
+                                    viewModel.onSignUpEmailFocusChanged(focusState.isFocused)
                                 }
                             },
                         trailingIcon = { Icon(imageVector = Icons.Default.Email, contentDescription = "Email Icon") },
                         keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next, keyboardType = KeyboardType.Email),
                         keyboardActions = KeyboardActions(onNext = { passwordFocusRequester.requestFocus() }),
-                        isError = uiState.emailError && uiState.email.isNotBlank(),
+                        isError = uiState.signUpEmailError && uiState.signUpEmail.isNotBlank(),
                         singleLine = true,
                         supportingText = {
-                            if (uiState.emailError && uiState.email.isNotBlank()) {
+                            if (uiState.signUpEmailError && uiState.signUpEmail.isNotBlank()) {
                                 Text(
                                     text = "Invalid Email Address",
                                     color = MaterialTheme.colorScheme.error,
@@ -299,7 +297,7 @@ fun SignUpScreen(
                         supportingText = {
                             if (uiState.passwordError) {
                                 Text(
-                                    text = "Password must be at least 8 characters, contain one uppercase letter, one lowercase letter, and one special character",
+                                    text = uiState.signUpPasswordErrorMessage,
                                     color = MaterialTheme.colorScheme.error,
                                     style = MaterialTheme.typography.bodySmall
                                 )

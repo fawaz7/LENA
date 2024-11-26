@@ -51,6 +51,7 @@ android {
 
 dependencies {
     implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
     val nav_version = "2.8.3"
     val ai_version = "0.9.0"
     val compose_version = "1.7.5"

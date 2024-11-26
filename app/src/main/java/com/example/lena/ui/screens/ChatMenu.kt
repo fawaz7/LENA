@@ -25,8 +25,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -91,7 +91,11 @@ fun MainMenu(navController: NavController, authViewModel: AuthViewModel) {
 
     LaunchedEffect(authState.value) {
         when(authState.value) {
-            is AuthState.Unauthenticated -> navController.navigate(Screens.LoginScreen.name)
+            is AuthState.Unauthenticated -> {
+                navController.navigate(Screens.LoginScreen.name) {
+                    popUpTo(Screens.MainMenu.name) { inclusive = true }
+                }
+            }
             else -> Unit
         }
     }
@@ -304,7 +308,7 @@ fun MessageInput(onMessageSend: (String) -> Unit, modifier: Modifier = Modifier)
             }
         }) {
             Icon(
-                imageVector = if (message == "") Icons.Default.Mic else Icons.Default.Send,
+                imageVector = if (message == "") Icons.Default.Mic else Icons.AutoMirrored.Filled.Send,
                 contentDescription = "Send message"
             )
         }

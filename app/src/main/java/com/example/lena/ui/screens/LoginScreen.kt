@@ -1,5 +1,6 @@
 package com.example.lena.ui.screens
 
+import android.widget.Toast
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -48,6 +49,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -82,6 +84,7 @@ fun LoginScreen(
     val usernameFocusRequester = FocusRequester()
     val passwordFocusRequester = FocusRequester()
     val authState = authViewModel.authState.observeAsState()
+    val context = LocalContext.current
 
     val logoSize by animateDpAsState(targetValue = if (isImeVisible) 80.dp else 270.dp, animationSpec = tween(durationMillis = 300),
         label = "LogoSize Animation"
@@ -102,13 +105,14 @@ fun LoginScreen(
     LaunchedEffect(authState.value) {
         when (authState.value) {
             is AuthState.Authenticated -> {
-                navController.navigate(Screens.MainMenu.name)
+                navController.navigate(Screens.MainMenu.name) {
+                    popUpTo(Screens.LoginScreen.name) { inclusive = true }
+                }
             }
             is AuthState.Error -> {
-                //Toast.makeText(context, (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
             }
             else -> Unit
-
         }
     }
 
@@ -187,23 +191,23 @@ fun LoginScreen(
             Spacer(modifier.height(20.dp))
             //=================================--> Email
             OutlinedTextField(
-                value = uiState.email,
+                value = uiState.loginEmail,
                 onValueChange = { authViewModel.onEmailChange(it) },
                 label = { Text(text = "Email") },
                 modifier = Modifier
                     .focusRequester(usernameFocusRequester)
                     .onFocusChanged { focusState ->
                         if (!focusState.isFocused) {
-                            authViewModel.onEmailFocusChanged(focusState.isFocused)
+                            authViewModel.onLoginEmailFocusChanged(focusState.isFocused)
                         }
                     },
                 trailingIcon = { Icon(imageVector = Icons.Default.AccountCircle, contentDescription = "Email Icon") },
                 keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next),
                 keyboardActions = KeyboardActions(onNext = { passwordFocusRequester.requestFocus() }),
                 singleLine = true,
-                isError = uiState.emailError && uiState.email.isNotBlank(),
+                isError = uiState.loginEmailError && uiState.loginEmail.isNotBlank(),
                 supportingText = {
-                    if (uiState.emailError && uiState.email.isNotBlank()) {
+                    if (uiState.loginEmailError && uiState.loginEmail.isNotBlank()) {
                         Text(text = "Invalid email format", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                 },
@@ -233,7 +237,7 @@ fun LoginScreen(
                     keyboardType = KeyboardType.Password,
                     autoCorrectEnabled = false
                 ),
-                keyboardActions = KeyboardActions(onDone = { authViewModel.login(uiState.email, uiState.password) }),
+                keyboardActions = KeyboardActions(onDone = { authViewModel.login(uiState.loginEmail, uiState.password) }),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -252,7 +256,7 @@ fun LoginScreen(
 
             //====================================--> Login Button
             Button(
-                onClick = { authViewModel.login(uiState.email, uiState.password) },
+                onClick = { authViewModel.login(uiState.loginEmail, uiState.password) },
                 enabled = uiState.isLogInFormValid && authState.value != AuthState.Loading,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
