@@ -5,9 +5,6 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.setValue
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -40,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -71,7 +69,6 @@ import com.example.lena.ui.theme.Gray900
 import com.example.lena.ui.theme.LENATheme
 import com.example.lena.viewModels.AuthState
 import com.example.lena.viewModels.AuthViewModel
-import com.example.lena.viewModels.SignUpViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,7 +86,7 @@ fun SignUpScreen(
     val repeatPasswordFocusRequester = FocusRequester()
     val keyboardController = LocalSoftwareKeyboardController.current
     //===================================
-    //val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
     //===================================
     val context = LocalContext.current
     val authState = viewModel.authState.observeAsState()
@@ -172,183 +169,168 @@ fun SignUpScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
 //=============================================================================-----> Username field
-//                    OutlinedTextField(
-//                        value = uiState.username,
-//                        onValueChange = { viewModel.onUsernameChange(it) },
-//                        label = { Text(text = "Username") },
-//                        modifier = Modifier
-//                            .focusRequester(usernameFocusRequester)
-//                            ,
-//                        trailingIcon = {
-//                            Icon(
-//                                imageVector = Icons.Default.AccountCircle,
-//                                contentDescription = "Username Icon"
-//                            )
-//                        },
-//                        keyboardOptions = KeyboardOptions.Default.copy(
-//                            imeAction = ImeAction.Next
-//                        ),
-//                        keyboardActions = KeyboardActions(
-//                            onNext = { emailFocusRequester.requestFocus() }
-//                        ),
-//                        isError = uiState.userNameError,
-//                        singleLine = true,
-//                        supportingText = {
-//                            if (uiState.userNameError) {
-//                                Text(
-//                                    text = "Username cannot be empty",
-//                                    color = MaterialTheme.colorScheme.error,
-//                                    style = MaterialTheme.typography.bodySmall,
-//                                    modifier = Modifier.align(Alignment.Start)
-//                                )
-//                            }
-//                        },
-//                        colors = OutlinedTextFieldDefaults.colors(
-//                            focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-//                            focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-//                        )
-//                    )
-//=============================================================================-----> Email field
-                    var email by remember { mutableStateOf("") }
                     OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
-                        label = { Text(text = "Email") },
+                        value = uiState.username,
+                        onValueChange = { viewModel.onUsernameChange(it) },
+                        label = { Text(text = "Username") },
                         modifier = Modifier
-                            .focusRequester(emailFocusRequester),
+                            .focusRequester(usernameFocusRequester)
+                            ,
                         trailingIcon = {
                             Icon(
-                                imageVector = Icons.Default.Email,
-                                contentDescription = "Email Icon"
+                                imageVector = Icons.Default.AccountCircle,
+                                contentDescription = "Username Icon"
                             )
                         },
                         keyboardOptions = KeyboardOptions.Default.copy(
-                            imeAction = ImeAction.Next,
-                            keyboardType = KeyboardType.Email
+                            imeAction = ImeAction.Next
                         ),
                         keyboardActions = KeyboardActions(
-                            onNext = { passwordFocusRequester.requestFocus() }
+                            onNext = { emailFocusRequester.requestFocus() }
                         ),
-                        //isError = uiState.emailError,
+                        isError = uiState.userNameError,
                         singleLine = true,
-//                        supportingText = {
-//                            if (uiState.emailError) {
-//                                Text(
-//                                    text = "Invalid Email Address",
-//                                    color = MaterialTheme.colorScheme.error,
-//                                    style = MaterialTheme.typography.bodySmall
-//                                )
-//                            }
-//                        },
+                        supportingText = {
+                            if (uiState.userNameError) {
+                                Text(
+                                    text = "Username cannot be empty",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.align(Alignment.Start)
+                                )
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+//=============================================================================-----> Email field
+                    OutlinedTextField(
+                        value = uiState.email,
+                        onValueChange = { viewModel.onEmailChange(it) },
+                        label = { Text(text = "Email") },
+                        modifier = Modifier
+                            .focusRequester(emailFocusRequester)
+                            .onFocusChanged { focusState ->
+                                if (!focusState.isFocused) {
+                                    viewModel.onEmailFocusChanged(focusState.isFocused)
+                                }
+                            },
+                        trailingIcon = { Icon(imageVector = Icons.Default.Email, contentDescription = "Email Icon") },
+                        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next, keyboardType = KeyboardType.Email),
+                        keyboardActions = KeyboardActions(onNext = { passwordFocusRequester.requestFocus() }),
+                        isError = uiState.emailError && uiState.email.isNotBlank(),
+                        singleLine = true,
+                        supportingText = {
+                            if (uiState.emailError && uiState.email.isNotBlank()) {
+                                Text(
+                                    text = "Invalid Email Address",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
 //=============================================================================-----> Password field
-                    var password by remember { mutableStateOf("") }
                     OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
+                        value = uiState.password,
+                        onValueChange = { viewModel.onPasswordChange(it) },
                         label = { Text(text = "Password") },
                         modifier = Modifier
                             .focusRequester(passwordFocusRequester)
-//                            .onFocusChanged { focusState ->
-//                                if (!focusState.isFocused) {
-//                                    viewModel.validatePassword(uiState.password)
-//                                }
-//                            }
-                        ,
-//                        trailingIcon = {
-//                            IconButton(onClick = { viewModel.togglePasswordVisibility() }) {
-//                                Icon(
-//                                    imageVector = if (uiState.isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-//                                    contentDescription = if (uiState.isPasswordVisible) "Hide Password" else "Show Password"
-//                                )
-//                            }
-//                        },
-//                        visualTransformation = if (uiState.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions.Default.copy(
-                            imeAction = ImeAction.Next,
-                            keyboardType = KeyboardType.Password,
-                            autoCorrectEnabled = false
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onNext = { repeatPasswordFocusRequester.requestFocus() }
-                        ),
-//                        isError = uiState.passwordError,
-//                        supportingText = {
-//                            if (uiState.passwordError) {
-//                                Text(
-//                                    text = "Password must be at least 8 characters, contain one uppercase letter, and one number",
-//                                    color = MaterialTheme.colorScheme.error,
-//                                    style = MaterialTheme.typography.bodySmall
-//                                )
-//                            }
-//                        },
+                            .onFocusChanged { focusState ->
+                                if (!focusState.isFocused) {
+                                    viewModel.validatePassword(uiState.password)
+                                }
+                            },
+                        trailingIcon = {
+                            IconButton(onClick = { viewModel.togglePasswordVisibility() }) {
+                                Icon(
+                                    imageVector = if (uiState.isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                    contentDescription = if (uiState.isPasswordVisible) "Hide Password" else "Show Password"
+                                )
+                            }
+                        },
+                        visualTransformation = if (uiState.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next, keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+                        keyboardActions = KeyboardActions(onNext = { repeatPasswordFocusRequester.requestFocus() }),
+                        isError = uiState.passwordError,
+                        supportingText = {
+                            if (uiState.passwordError) {
+                                Text(
+                                    text = "Password must be at least 8 characters, contain one uppercase letter, and one number",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
 //=============================================================================-----> Re-enter Password field
-//                    OutlinedTextField(
-//                        value = uiState.rePassword,
-//                        onValueChange = { viewModel.onRePasswordChange(it) },
-//                        label = { Text(text = "Repeat password") },
-//                        modifier = Modifier
-//                            .focusRequester(repeatPasswordFocusRequester)
-//                            .onFocusChanged { focusState ->
-//                                isRePasswordFocused = focusState.isFocused
-//                                if (!focusState.isFocused) {
-//                                    viewModel.onRePasswordChange(uiState.rePassword)
-//                                }
-//                            },
-//                        trailingIcon = {
-//                            IconButton(onClick = { viewModel.toggleRePasswordVisibility() }) {
-//                                Icon(
-//                                    imageVector = if (uiState.isRePasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-//                                    contentDescription = if (uiState.isRePasswordVisible) "Hide Password" else "Show Password"
-//                                )
-//                            }
-//                        },
-//                        visualTransformation = if (uiState.isRePasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-//                        keyboardOptions = KeyboardOptions.Default.copy(
-//                            imeAction = ImeAction.Done,
-//                            keyboardType = KeyboardType.Password,
-//                            autoCorrectEnabled = false
-//                        ),
-//                        keyboardActions = KeyboardActions(
-//                            onDone = {
-//                                viewModel.signUp {}
-//                                keyboardController?.hide()
-//                            }
-//                        ),
-//                        isError = uiState.repeatPasswordError,
-//                        supportingText = {
-//                            if (uiState.repeatPasswordError) {
-//                                Text(
-//                                    text = "Passwords do not match",
-//                                    color = MaterialTheme.colorScheme.error,
-//                                    style = MaterialTheme.typography.bodySmall
-//                                )
-//                            }
-//                        },
-//                        colors = OutlinedTextFieldDefaults.colors(
-//                            focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-//                            focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-//                        )
-//                    )
-//                }
-//            }
+                    OutlinedTextField(
+                        value = uiState.rePassword,
+                        onValueChange = { viewModel.onRePasswordChange(it) },
+                        label = { Text(text = "Repeat password") },
+                        modifier = Modifier
+                            .focusRequester(repeatPasswordFocusRequester)
+                            .onFocusChanged { focusState ->
+                                isRePasswordFocused = focusState.isFocused
+                                if (!focusState.isFocused) {
+                                    viewModel.onRePasswordChange(uiState.rePassword)
+                                }
+                            },
+                        trailingIcon = {
+                            IconButton(onClick = { viewModel.toggleRePasswordVisibility() }) {
+                                Icon(
+                                    imageVector = if (uiState.isRePasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                    contentDescription = if (uiState.isRePasswordVisible) "Hide Password" else "Show Password"
+                                )
+                            }
+                        },
+                        visualTransformation = if (uiState.isRePasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions.Default.copy
+                            (
+                            imeAction = ImeAction.Done,
+                            keyboardType = KeyboardType.Password,
+                            autoCorrectEnabled = false
+                        ),
+                        keyboardActions = KeyboardActions(onDone = {
+                            viewModel.signUp(email = uiState.email, password = uiState.password)
+                            keyboardController?.hide()
+                        }),
+                        isError = uiState.repeatPasswordError,
+                        supportingText = {
+                            if (uiState.repeatPasswordError) {
+                                Text(
+                                    text = "Passwords do not match",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+                }
+            }
 //=============================================================================-----> Finish the Sign Up
             Button(
                 onClick = {
-                    viewModel.signUp(email = email, password = password)
+                    viewModel.signUp(email = uiState.email, password = uiState.password)
                     keyboardController?.hide()
                     //viewModel.signUp {Toast.makeText(context, "Sign up successful!", Toast.LENGTH_SHORT).show() }
                 },
-                enabled = true /*uiState.isFormValid*/,
+                enabled = uiState.isFormValid,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -377,13 +359,11 @@ fun SignUpScreen(
         }
     }
 }
-    }
-}
 
 @Preview(showSystemUi = true)
 @Composable
 fun SignUpScreenPreview() {
     LENATheme(darkTheme = true) {
-//        SignUpScreen(navController = rememberNavController())
+        SignUpScreen(navController = rememberNavController(), viewModel = viewModel())
     }
 }
