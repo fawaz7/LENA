@@ -10,6 +10,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 
 data class AuthUiState(
+    val firstName: String = "",
+    val lastName: String = "",
+    val firstNameError: Boolean = false,
+    val lastNameError: Boolean = false,
     val email: String = "",
     val password: String = "",
     val isPasswordVisible: Boolean = false,
@@ -17,12 +21,10 @@ data class AuthUiState(
     val passwordError: Boolean = false,
     val isLogInFormValid: Boolean = false,
     val isSignUpFormValid: Boolean = false,
-    val username: String = "",
     val rePassword: String = "",
     val isRePasswordVisible: Boolean = false,
-    val userNameError: Boolean = false,
     val repeatPasswordError: Boolean = false,
-    val successfulSignUp: Boolean = false
+    val successfulSignUp: Boolean = false,
 )
 
 class AuthViewModel : ViewModel() {
@@ -37,7 +39,6 @@ class AuthViewModel : ViewModel() {
 
 
     init {
-        //_authState.value = AuthState.Loading
         checkAuthStatus()
     }
 
@@ -54,7 +55,7 @@ class AuthViewModel : ViewModel() {
     fun login(email: String, password: String) {
 
         if (email.isBlank() || password.isBlank()) {
-            _authState.value = AuthState.Error("Username or password cannot be empty")
+            _authState.value = AuthState.Error("Email or password cannot be empty")
             return
         }
 
@@ -85,13 +86,13 @@ class AuthViewModel : ViewModel() {
                     emailError = !validateEmail(it.email.trim())
                 )
             }
-            validateForm()
+            validateSignInForm()
             validateSignUpForm()
         }
     }
 
 
-    fun onPasswordChange(newPassword: String) {
+    fun onSignInPasswordChange(newPassword: String) {
         _uiState.update {
             it.copy(
                 password = newPassword,
@@ -99,8 +100,7 @@ class AuthViewModel : ViewModel() {
                 repeatPasswordError = it.rePassword.isNotEmpty() && it.rePassword != newPassword
             )
         }
-        validateForm()
-        validateSignUpForm()
+        validateSignInForm()
     }
 
     fun togglePasswordVisibility() {
@@ -109,7 +109,7 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    private fun validateForm() {
+    private fun validateSignInForm() {
         _uiState.update {
             it.copy(
                 isLogInFormValid = it.email.isNotBlank() &&
@@ -139,11 +139,32 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    fun onUsernameChange(newUsername: String) {
+
+    fun onFirstNameChange(newFirstname: String) {
         _uiState.update {
             it.copy(
-                username = newUsername,
-                userNameError = newUsername.isBlank()
+                firstName = newFirstname,
+                firstNameError = newFirstname.isBlank()
+            )
+        }
+        validateSignUpForm()
+    }
+    fun onLastnameChange(newLastname: String) {
+        _uiState.update {
+            it.copy(
+                lastName = newLastname,
+                lastNameError = newLastname.isBlank()
+            )
+        }
+        validateSignUpForm()
+    }
+
+    fun onSignUpPasswordChange(newPassword: String) {
+        _uiState.update {
+            it.copy(
+                password = newPassword,
+                passwordError = false,
+                repeatPasswordError = it.rePassword.isNotEmpty() && it.rePassword != newPassword
             )
         }
         validateSignUpForm()
@@ -176,7 +197,11 @@ class AuthViewModel : ViewModel() {
     private fun validateSignUpForm() {
         _uiState.update {
             it.copy(
-                isSignUpFormValid = it.username.isNotBlank() &&
+                isSignUpFormValid =
+                        it.firstName.isNotBlank() &&
+                        !it.firstNameError &&
+                        it.lastName.isNotBlank() &&
+                        !it.lastNameError &&
                         it.email.isNotBlank() &&
                         !it.emailError &&
                         it.password.isNotBlank() &&

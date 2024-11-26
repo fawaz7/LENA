@@ -216,7 +216,7 @@ fun LoginScreen(
             //====================================--> Password
             OutlinedTextField(
                 value = uiState.password,
-                onValueChange = { authViewModel.onPasswordChange(it) },
+                onValueChange = { authViewModel.onSignInPasswordChange(it) },
                 label = { Text(text = "Password") },
                 modifier = Modifier.focusRequester(passwordFocusRequester),
                 trailingIcon = {
