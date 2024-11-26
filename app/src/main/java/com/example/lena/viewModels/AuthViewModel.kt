@@ -15,7 +15,8 @@ data class AuthUiState(
     val isPasswordVisible: Boolean = false,
     val emailError: Boolean = false,
     val passwordError: Boolean = false,
-    val isFormValid: Boolean = false,
+    val isLogInFormValid: Boolean = false,
+    val isSignUpFormValid: Boolean = false,
     val username: String = "",
     val rePassword: String = "",
     val isRePasswordVisible: Boolean = false,
@@ -91,7 +92,7 @@ class AuthViewModel : ViewModel() {
 
     fun onPasswordChange(newPassword: String) {
         _uiState.update {
-            it.copy(password = newPassword)
+            it.copy(password = newPassword, passwordError = false)
         }
         validateForm()
     }
@@ -105,7 +106,7 @@ class AuthViewModel : ViewModel() {
     private fun validateForm() {
         _uiState.update {
             it.copy(
-                isFormValid = it.email.isNotBlank() &&
+                isLogInFormValid = it.email.isNotBlank() &&
                         !it.emailError &&
                         it.password.isNotBlank()
             )
@@ -117,13 +118,13 @@ class AuthViewModel : ViewModel() {
     }
 
     //====================================================================--> Sign Up
-    fun signUp(email: String, password: String) {
-        if (email.isBlank() || password.isBlank()) {
-            _authState.value = AuthState.Error("All fields must be filled")
+    fun signUp() {
+        if (uiState.value.isSignUpFormValid) {
+            _authState.value = AuthState.Error("All fields must be filled and valid")
             return
         }
         _authState.value = AuthState.Loading
-        auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener { task ->
+        auth.createUserWithEmailAndPassword(_uiState.value.email, _uiState.value.password).addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 _authState.value = AuthState.Authenticated
             } else {
@@ -159,16 +160,39 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    fun validatePassword(password: String): Boolean {
-        return password.length >= 8 && password.any { it.isUpperCase() } && password.any { it.isDigit() }
+    private fun validatePassword(password: String): Boolean {
+        return password.length >= 8 &&
+                password.any { it.isUpperCase() } &&
+                password.any { it.isLowerCase() } &&
+                password.any { !it.isLetterOrDigit() }
     }
 
-    private fun validateSignUpForm(): Boolean {
-        return _uiState.value.username.isNotBlank() &&
-                _uiState.value.email.isNotBlank() &&
-                validateEmail(_uiState.value.email) &&
-                validatePassword(_uiState.value.password) &&
-                _uiState.value.password == _uiState.value.rePassword
+    private fun validateSignUpForm() {
+        _uiState.update {
+            it.copy(
+                isSignUpFormValid = it.username.isNotBlank() &&
+                        it.email.isNotBlank() &&
+                        !it.emailError &&
+                        it.password.isNotBlank() &&
+                        !it.passwordError &&
+                        it.rePassword.isNotBlank() &&
+                        !it.repeatPasswordError &&
+                        it.password == it.rePassword
+            )
+        }
+    }
+
+    fun onPasswordFocusChanged(focused: Boolean) {
+        if (!focused) {
+            _uiState.update {
+                it.copy(passwordError = !validatePassword(it.password))
+            }
+            validateForm()
+        } else {
+            _uiState.update {
+                it.copy(passwordError = false)
+            }
+        }
     }
 
 

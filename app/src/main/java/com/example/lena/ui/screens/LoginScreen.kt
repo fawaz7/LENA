@@ -249,7 +249,7 @@ fun LoginScreen(
             //====================================--> Login Button
             Button(
                 onClick = { authViewModel.login(uiState.email, uiState.password) },
-                enabled = uiState.isFormValid && authState.value != AuthState.Loading,
+                enabled = uiState.isLogInFormValid && authState.value != AuthState.Loading,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -244,9 +246,7 @@ fun SignUpScreen(
                         modifier = Modifier
                             .focusRequester(passwordFocusRequester)
                             .onFocusChanged { focusState ->
-                                if (!focusState.isFocused) {
-                                    viewModel.validatePassword(uiState.password)
-                                }
+                                viewModel.onPasswordFocusChanged(focusState.isFocused)
                             },
                         trailingIcon = {
                             IconButton(onClick = { viewModel.togglePasswordVisibility() }) {
@@ -257,13 +257,17 @@ fun SignUpScreen(
                             }
                         },
                         visualTransformation = if (uiState.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next, keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+                        keyboardOptions = KeyboardOptions.Default.copy(
+                            imeAction = ImeAction.Next,
+                            keyboardType = KeyboardType.Password,
+                            autoCorrectEnabled = false
+                        ),
                         keyboardActions = KeyboardActions(onNext = { repeatPasswordFocusRequester.requestFocus() }),
                         isError = uiState.passwordError,
                         supportingText = {
                             if (uiState.passwordError) {
                                 Text(
-                                    text = "Password must be at least 8 characters, contain one uppercase letter, and one number",
+                                    text = "Password must be at least 8 characters, contain one uppercase letter, one lowercase letter, and one special character",
                                     color = MaterialTheme.colorScheme.error,
                                     style = MaterialTheme.typography.bodySmall
                                 )
@@ -296,15 +300,18 @@ fun SignUpScreen(
                             }
                         },
                         visualTransformation = if (uiState.isRePasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions.Default.copy
-                            (
-                            imeAction = ImeAction.Done,
+                        keyboardOptions = KeyboardOptions.Default.copy(
+                            imeAction = if (uiState.isSignUpFormValid) ImeAction.Send else ImeAction.Done,
                             keyboardType = KeyboardType.Password,
                             autoCorrectEnabled = false
                         ),
                         keyboardActions = KeyboardActions(onDone = {
-                            viewModel.signUp(email = uiState.email, password = uiState.password)
-                            keyboardController?.hide()
+                            if (uiState.isSignUpFormValid) {
+                                viewModel.signUp()
+                                keyboardController?.hide()
+                            } else {
+                                keyboardController?.hide()
+                            }
                         }),
                         isError = uiState.repeatPasswordError,
                         supportingText = {
@@ -326,11 +333,10 @@ fun SignUpScreen(
 //=============================================================================-----> Finish the Sign Up
             Button(
                 onClick = {
-                    viewModel.signUp(email = uiState.email, password = uiState.password)
+                    viewModel.signUp()
                     keyboardController?.hide()
-                    //viewModel.signUp {Toast.makeText(context, "Sign up successful!", Toast.LENGTH_SHORT).show() }
                 },
-                enabled = uiState.isFormValid,
+                enabled = uiState.isSignUpFormValid,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -338,9 +344,15 @@ fun SignUpScreen(
                     disabledContentColor = Gray800,
                 ),
                 modifier = modifier.padding(8.dp)
-
             ) {
-                Text(text = "Sign Up")
+                if (authState.value == AuthState.Loading) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                } else {
+                    Text(text = "Sign Up")
+                }
             }
 
             Row {
