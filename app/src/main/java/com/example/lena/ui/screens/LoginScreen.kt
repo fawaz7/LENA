@@ -1,6 +1,5 @@
 package com.example.lena.ui.screens
 
-import android.widget.Toast
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -26,6 +25,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,9 +41,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -51,7 +48,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -62,7 +58,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.lena.R
@@ -73,7 +68,6 @@ import com.example.lena.ui.theme.Gray900
 import com.example.lena.ui.theme.LENATheme
 import com.example.lena.viewModels.AuthState
 import com.example.lena.viewModels.AuthViewModel
-import com.example.lena.viewModels.LoginViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,12 +76,11 @@ fun LoginScreen(
     authViewModel: AuthViewModel ,
     modifier: Modifier = Modifier) {
 
-   // val uiState by authViewModel.uiState.collectAsState()
+    val uiState by authViewModel.uiState.collectAsState()
     val isImeVisible by rememberImeState()
     val focusManager = LocalFocusManager.current
     val usernameFocusRequester = FocusRequester()
     val passwordFocusRequester = FocusRequester()
-    val context = LocalContext.current
     val authState = authViewModel.authState.observeAsState()
 
     val logoSize by animateDpAsState(targetValue = if (isImeVisible) 80.dp else 270.dp, animationSpec = tween(durationMillis = 300),
@@ -112,7 +105,7 @@ fun LoginScreen(
                 navController.navigate(Screens.MainMenu.name)
             }
             is AuthState.Error -> {
-                Toast.makeText(context, (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
+                //Toast.makeText(context, (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
             }
             else -> Unit
 
@@ -130,7 +123,7 @@ fun LoginScreen(
                     actionIconContentColor = MaterialTheme.colorScheme.onBackground,
                     scrolledContainerColor = MaterialTheme.colorScheme.onBackground,
                 ),
-                modifier = modifier.height(64.dp)
+                modifier = modifier.height(52.dp)
             )
         }
     ) { innerPadding ->
@@ -188,115 +181,108 @@ fun LoginScreen(
             }
 
             Spacer(modifier.height(20.dp))
-            //=================================--> Username
-            var email by remember { mutableStateOf("") }
+            //=================================--> Email
             OutlinedTextField(
-                value = email,
-
-                onValueChange = {
-                    email = it
-                },
-                label = { Text(text = "Username") },
+                value = uiState.email,
+                onValueChange = { authViewModel.onEmailChange(it) },
+                label = { Text(text = "Email") },
                 modifier = Modifier
                     .focusRequester(usernameFocusRequester)
-                    /*
                     .onFocusChanged { focusState ->
-                    if (!focusState.isFocused) {
-                        authViewModel.onUsernameChange(uiState.username.trim())
-                    }
-                }*/,
-                trailingIcon = { Icon(
-                    imageVector = Icons.Default.AccountCircle,
-                    contentDescription = "Username Icon"
-                )
-                },
-                keyboardOptions = KeyboardOptions.Default.copy(
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = {
-                        passwordFocusRequester.requestFocus()
-
-                    }
-                ),
-
+                        if (!focusState.isFocused) {
+                            authViewModel.onEmailFocusChanged(focusState.isFocused)
+                        }
+                    },
+                trailingIcon = { Icon(imageVector = Icons.Default.AccountCircle, contentDescription = "Email Icon") },
+                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { passwordFocusRequester.requestFocus() }),
                 singleLine = true,
+                isError = uiState.emailError && uiState.email.isNotBlank(),
+                supportingText = {
+                    if (uiState.emailError && uiState.email.isNotBlank()) {
+                        Text(text = "Invalid email format", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
-            //====================================--> Password
-            var password by remember { mutableStateOf("") }
-            OutlinedTextField(
 
-                value = password,
-                onValueChange = { password = it },
+            //====================================--> Password
+            OutlinedTextField(
+                value = uiState.password,
+                onValueChange = { authViewModel.onPasswordChange(it) },
                 label = { Text(text = "Password") },
                 modifier = Modifier.focusRequester(passwordFocusRequester),
-//                trailingIcon = {
-//                    IconButton(onClick = { authViewModel.togglePasswordVisibility() }) {
-//                        Icon(
-//                            imageVector = if (uiState.isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-//                            contentDescription = if (uiState.isPasswordVisible) "Hide Password" else "Show Password"
-//                        )
-//                    }
-//                },
-               // visualTransformation = if (uiState.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { authViewModel.togglePasswordVisibility() }) {
+                        Icon(
+                            imageVector = if (uiState.isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                            contentDescription = if (uiState.isPasswordVisible) "Hide Password" else "Show Password"
+                        )
+                    }
+                },
+                visualTransformation = if (uiState.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions.Default.copy(
                     imeAction = ImeAction.Done,
                     keyboardType = KeyboardType.Password,
                     autoCorrectEnabled = false
                 ),
-                keyboardActions =
-                KeyboardActions(
-                    onDone = {
-                        authViewModel.login(email,password)
-                    }
-                ),
+                keyboardActions = KeyboardActions(onDone = { authViewModel.login(uiState.email, uiState.password) }),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
-//            uiState.error?.let { error ->
-//                Text(text = error,
-//                    color = MaterialTheme.colorScheme.error,
-//                    style = MaterialTheme.typography.bodySmall,
-//                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
-//            }
+            //====================================--> Invalid Credentials Text
 
+            if (authState.value is AuthState.Error) {
+                Text(
+                    text = "Incorrect Credentials",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+
+            //====================================--> Login Button
             Button(
-                onClick = {
-                    authViewModel.login(email,password)
-                },
-                enabled = true,/*authViewModel.validateInputs(),*/
+                onClick = { authViewModel.login(uiState.email, uiState.password) },
+                enabled = uiState.isFormValid && authState.value != AuthState.Loading,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     disabledContainerColor = Gray900,
                     disabledContentColor = Gray800,
                 ),
-//                modifier = modifier.padding(if (uiState.isValid) 8.dp else {0.dp})
-
             ) {
-                Text(text = "Login")
+                if (authState.value == AuthState.Loading) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                } else {
+                    Text(text = "Login")
+                }
             }
 
             Text(
                 text = "Forgot Password",
+                fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.clickable(onClick = { /*TODO*/ })
             )
             Row {
                 Text(
                     text = "Don't have an account?",
-                    color = Color.Gray
+                    color = Color.Gray,
+                    fontSize = 12.sp,
                 )
                 Text(
                     text = " Sign Up",
                     color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 12.sp,
                     modifier = Modifier.clickable(onClick = { navController.navigate(Screens.SignUpScreen.name) })
                 )
             }
@@ -304,10 +290,13 @@ fun LoginScreen(
     }
 }
 
-@Preview(showSystemUi = true )
+@Preview(showSystemUi = true)
 @Composable
-fun LoginScreenPreview(){
+fun LoginScreenPreview() {
+    val navController = rememberNavController()
     LENATheme(darkTheme = true) {
-        LoginScreen(navController = rememberNavController(), AuthViewModel())
+        // Provide mock dependencies to AuthViewModel
+        val authViewModel = AuthViewModel()
+        LoginScreen(navController, authViewModel, modifier = Modifier)
     }
 }
