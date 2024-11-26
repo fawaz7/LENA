@@ -14,7 +14,8 @@ import com.example.lena.viewModels.AuthViewModel
 enum class Screens{
     LoginScreen,
     MainMenu,
-    SignUpScreen
+    SignUpScreen,
+    ForgotPasswordScreen,
 }
 
 @Composable

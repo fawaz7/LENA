@@ -11,7 +11,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
-import kotlin.math.log
+import java.util.Locale
+
 
 data class AuthUiState(
     val firstName: String = "",
@@ -129,15 +130,12 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    private fun validateEmail(email: String): Boolean {
-        return Patterns.EMAIL_ADDRESS.matcher(email).matches()
-    }
 
+    //********************************************************************
     //====================================================================--> Sign Up
     fun signUp() {
-        if (uiState.value.isSignUpFormValid) {
+        if (!uiState.value.isSignUpFormValid) {
             _authState.value = AuthState.Error("All fields must be filled and valid")
-            Log.e("SignUp", "fname: ${uiState.value.firstName}, lname: ${uiState.value.lastName}, email: ${uiState.value.signUpEmail}, password: ${uiState.value.password}, rePassword: ${uiState.value.rePassword}")
             return
         }
         _authState.value = AuthState.Loading
@@ -146,8 +144,8 @@ class AuthViewModel : ViewModel() {
                 val userID = auth.currentUser?.uid ?: ""
                 val documentReference: DocumentReference = fStore.collection("Users").document(userID)
                 val user = mapOf(
-                    "firstName" to _uiState.value.firstName,
-                    "lastName" to _uiState.value.lastName,
+                    "firstName" to _uiState.value.firstName.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
+                    "lastName" to _uiState.value.lastName.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
                     "email" to _uiState.value.signUpEmail
                 )
                 documentReference.set(user).addOnSuccessListener {
@@ -160,116 +158,71 @@ class AuthViewModel : ViewModel() {
             }
         }
     }
-
-    fun onSignUpPasswordChange(newPassword: String) {
+    //====================================================================--> Name handling
+    fun onFirstNameChange(newFirstName: String) {
         _uiState.update {
             it.copy(
-                password = newPassword,
-                passwordError = false,
-                repeatPasswordError = it.rePassword.isNotEmpty() && it.rePassword != newPassword
-            )
-        }
-        validateSignUpForm()
-    }
-
-
-    fun onRePasswordChange(newRePassword: String) {
-        _uiState.update {
-            it.copy(
-                rePassword = newRePassword,
-                repeatPasswordError = newRePassword.isNotEmpty() && newRePassword != _uiState.value.password
-            )
-        }
-        validateSignUpForm()
-    }
-
-    fun toggleRePasswordVisibility() {
-        _uiState.update {
-            it.copy(isRePasswordVisible = !it.isRePasswordVisible)
-        }
-    }
-
-    private fun validatePassword(password: String): Pair<Boolean, String> {
-        return when {
-            password.length < 8 -> Pair(false, "Character count must be more than 8 characters long")
-            !password.any { it.isLowerCase() } -> Pair(false, "Password must have a lowercase letter")
-            !password.any { it.isUpperCase() } -> Pair(false, "Password must have an uppercase letter")
-            !password.any { !it.isLetterOrDigit() } -> Pair(false, "Password must have a special character")
-            else -> Pair(true, "")
-        }
-    }
-
-    private fun validateSignUpForm() {
-        _uiState.update {
-            it.copy(
-                isSignUpFormValid =
-                        it.firstName.isNotBlank() &&
-                        !it.firstNameError &&
-                        it.lastName.isNotBlank() &&
-                        !it.lastNameError &&
-                        it.signUpEmail.isNotBlank() &&
-                        !it.signUpEmailError &&
-                        it.password.isNotBlank() &&
-                        !it.passwordError &&
-                        it.rePassword.isNotBlank() &&
-                        !it.repeatPasswordError &&
-                        it.password == it.rePassword
+                firstName = newFirstName.trim(),
+                firstNameError = false // Reset error on change
             )
         }
     }
 
-    fun onPasswordFocusChanged(focused: Boolean) {
+    fun onFirstNameFocusChanged(focused: Boolean) {
         if (!focused) {
-            val (isValid, errorMessage) = validatePassword(_uiState.value.password)
+            val (isValid, errorMessage) = validateName(_uiState.value.firstName, focused)
             _uiState.update {
-                it.copy(passwordError = !isValid && it.password.isNotBlank(), signUpPasswordErrorMessage = errorMessage)
+                it.copy(
+                    firstName = it.firstName.trim(),
+                    firstNameError = !isValid,
+                    firstNameErrorMessage = errorMessage
+                )
             }
             validateSignUpForm()
-        } else {
-            _uiState.update {
-                it.copy(passwordError = false, signUpPasswordErrorMessage = "")
-            }
         }
     }
 
-    private fun validateName(name: String): Pair<Boolean, String> {
+    fun onLastNameChange(newLastName: String) {
+        _uiState.update {
+            it.copy(
+                lastName = newLastName,
+                lastNameError = false // Reset error on change
+            )
+        }
+    }
+
+    fun onLastNameFocusChanged(focused: Boolean) {
+        if (!focused) {
+            val (isValid, errorMessage) = validateName(_uiState.value.lastName, focused)
+            _uiState.update {
+                it.copy(
+                    lastName = it.lastName.trim(),
+                    lastNameError = !isValid,
+                    lastNameErrorMessage = errorMessage
+                )
+            }
+            validateSignUpForm()
+        }
+    }
+
+    private fun validateName(name: String, focused: Boolean): Pair<Boolean, String> {
         val trimmedName = name.trim()
-        val nameParts = trimmedName.split("\\s+".toRegex()).map { it.capitalize() }
-        val capitalized = nameParts.joinToString(" ")
+        val nameParts = trimmedName.split("\\s+".toRegex()).map {
+            it.replaceFirstChar { char ->
+                if (char.isLowerCase()) char.titlecase(Locale.getDefault()) else char.toString()
+            }
+        }
 
         return when {
             trimmedName.isBlank() -> Pair(false, "Name cannot be blank")
-            trimmedName.length < 2 || trimmedName.length > 15 -> Pair(false, "Name must be between 2 and 15 characters long")
-            !trimmedName.all { it.isLetter() || it.isWhitespace() } -> Pair(false, "Name can only contain alphabetic characters")
+            (trimmedName.length < 2 || trimmedName.length > 15) && !focused -> Pair(false, "Name must be between 2 and 15 characters long")
+            !trimmedName.all { it.isLetter() || it.isWhitespace() || it == '-' } -> Pair(false, "Name can only contain alphabetic characters and '-'")
+            trimmedName.startsWith('-') -> Pair(false, "Name cannot start with '-'")
             trimmedName.any { it.isWhitespace() } && (nameParts.any { it.length < 2 }) -> Pair(false, "Each part of the name must be at least 2 characters long")
             else -> Pair(true, "")
         }
     }
-
-    fun onFirstNameChange(newFirstName: String) {
-        val (isValid, errorMessage) = validateName(newFirstName)
-        _uiState.update {
-            it.copy(
-                firstName = newFirstName.trim(),
-                firstNameError = !isValid,
-                firstNameErrorMessage = errorMessage
-            )
-        }
-        validateSignUpForm()
-    }
-
-    fun onLastNameChange(newLastName: String) {
-        val (isValid, errorMessage) = validateName(newLastName)
-        _uiState.update {
-            it.copy(
-                lastName = newLastName.trim(),
-                lastNameError = !isValid,
-                lastNameErrorMessage = errorMessage
-            )
-        }
-        validateSignUpForm()
-    }
-
+    //====================================================================--> Email Handling
     fun onSignUpEmailChange(newEmail: String) {
         _uiState.update {
             it.copy(
@@ -291,10 +244,82 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    private fun validateEmail(email: String): Boolean {
+        return Patterns.EMAIL_ADDRESS.matcher(email).matches()
+    }
+    //====================================================================--> Password Handling
+    fun onSignUpPasswordChange(newPassword: String) {
+        _uiState.update {
+            it.copy(
+                password = newPassword,
+                passwordError = false,
+                repeatPasswordError = it.rePassword.isNotEmpty() && it.rePassword != newPassword
+            )
+        }
+        validateSignUpForm()
+    }
 
+    fun onPasswordFocusChanged(focused: Boolean) {
+        if (!focused) {
+            val (isValid, errorMessage) = validatePassword(_uiState.value.password)
+            _uiState.update {
+                it.copy(passwordError = !isValid && it.password.isNotBlank(), signUpPasswordErrorMessage = errorMessage)
+            }
+            validateSignUpForm()
+        } else {
+            _uiState.update {
+                it.copy(passwordError = false, signUpPasswordErrorMessage = "")
+            }
+        }
+    }
 
+    private fun validatePassword(password: String): Pair<Boolean, String> {
+        return when {
+            password.length < 8 -> Pair(false, "Character count must be more than 8 characters long")
+            !password.any { it.isLowerCase() } -> Pair(false, "Password must have a lowercase letter")
+            !password.any { it.isUpperCase() } -> Pair(false, "Password must have an uppercase letter")
+            !password.any { !it.isLetterOrDigit() } -> Pair(false, "Password must have a special character")
+            else -> Pair(true, "")
+        }
+    }
 
-    //====================================================================--> Sign Out
+    fun onRePasswordChange(newRePassword: String) {
+        _uiState.update {
+            it.copy(
+                rePassword = newRePassword,
+                repeatPasswordError = newRePassword.isNotEmpty() && newRePassword != _uiState.value.password
+            )
+        }
+        validateSignUpForm()
+    }
+
+    fun toggleRePasswordVisibility() {
+        _uiState.update {
+            it.copy(isRePasswordVisible = !it.isRePasswordVisible)
+        }
+    }
+    //====================================================================--> Validate Entire Sign Up Form
+    private fun validateSignUpForm() {
+        _uiState.update {
+            it.copy(
+                isSignUpFormValid =
+                        it.firstName.isNotBlank() &&
+                        !it.firstNameError &&
+                        it.lastName.isNotBlank() &&
+                        !it.lastNameError &&
+                        it.signUpEmail.isNotBlank() &&
+                        !it.signUpEmailError &&
+                        it.password.isNotBlank() &&
+                        !it.passwordError &&
+                        it.rePassword.isNotBlank() &&
+                        !it.repeatPasswordError &&
+                        it.password == it.rePassword
+            )
+        }
+    }
+
+    //********************************************************************
+    //====================================================================--> Miscellaneous
     fun signOut() {
         auth.signOut()
         _authState.value = AuthState.Unauthenticated
@@ -304,6 +329,8 @@ class AuthViewModel : ViewModel() {
     fun resetUiState() {
         _uiState.value = AuthUiState()
     }
+
+
 
 }
 

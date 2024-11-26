@@ -147,7 +147,7 @@ fun SignUpScreen(
         ) {
             Spacer(modifier = modifier.height(firstSpacerHeight).fillMaxWidth())
 
-            Crossfade(targetState = isImeVisible, label = "Welcome Screen Label") { isKeyboardVisible ->
+            Crossfade(targetState = isImeVisible, label = "Welcome Screen Label Animation") { isKeyboardVisible ->
                 Column(modifier.align(Alignment.CenterHorizontally)) {
                     Spacer(modifier.height(spacerHeight))
                     Text(
@@ -182,7 +182,12 @@ fun SignUpScreen(
                             label = { Text(text = "First Name", fontSize = 12.sp) },
                             modifier = Modifier
                                 .weight(1f)
-                                .focusRequester(firstNameFocusRequester),
+                                .focusRequester(firstNameFocusRequester)
+                                .onFocusChanged { focusState ->
+                                    if (!focusState.isFocused) {
+                                        viewModel.onFirstNameFocusChanged(focusState.isFocused)
+                                    }
+                                },
                             keyboardOptions = KeyboardOptions.Default.copy(
                                 imeAction = ImeAction.Next
                             ),
@@ -211,7 +216,12 @@ fun SignUpScreen(
                             label = { Text(text = "Last Name", fontSize = 12.sp) },
                             modifier = Modifier
                                 .weight(1f)
-                                .focusRequester(lastNameFocusRequester),
+                                .focusRequester(lastNameFocusRequester)
+                                .onFocusChanged { focusState ->
+                                    if (!focusState.isFocused) {
+                                        viewModel.onLastNameFocusChanged(focusState.isFocused)
+                                    }
+                                },
                             keyboardOptions = KeyboardOptions.Default.copy(
                                 imeAction = ImeAction.Next
                             ),

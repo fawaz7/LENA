@@ -2,12 +2,15 @@ package com.example.lena.ui.screens
 
 
 import android.app.Activity
+import android.view.View
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,6 +66,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -74,6 +78,7 @@ import com.example.lena.ui.theme.LENATheme
 import com.example.lena.viewModels.AuthState
 import com.example.lena.viewModels.AuthViewModel
 import com.example.lena.viewModels.ChatViewModel
+import com.google.rpc.context.AttributeContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -165,30 +170,40 @@ fun MainMenuTopBar(modifier: Modifier = Modifier, viewModel: AuthViewModel) {
                 Text(
                     text = stringResource(R.string.Chat_menu),
                     color = if (isSystemInDarkTheme()) Color.White else Color.Black,
+                    fontWeight = FontWeight.Light,
                     modifier = Modifier.weight(0.8f)
                 )
                 Image(
                     painter = painterResource(id = if (isSystemInDarkTheme()) R.drawable.medusa_white else R.drawable.medusa_black),
                     contentDescription = stringResource(R.string.Logo),
-                    modifier = Modifier.size(36.dp).clickable(
-                        onClick = {
-                            optionsMenu = !optionsMenu
-                        }
-                    ).weight(0.2f)
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clickable(
+                            onClick = { optionsMenu = !optionsMenu },
+                            indication = null,  // This disables the ripple effect
+                            interactionSource = remember { MutableInteractionSource() }
+                        )
+                        .weight(0.2f)
                 )
                 DropdownMenu(
                     expanded = optionsMenu,
                     onDismissRequest = { optionsMenu = false },
                     offset = DpOffset(500.dp, 0.dp),
                     modifier = Modifier.background(
-                        color = MaterialTheme.colorScheme.secondary,
+                        color = MaterialTheme.colorScheme.outline,
                     )
                 ){
                     DropdownMenuItem(
+                        onClick = {  },
+                        text = { Text(text = "My Account", fontStyle = MaterialTheme.typography.bodyMedium.fontStyle) },
+
+                        )
+                    DropdownMenuItem(
                         onClick = { viewModel.signOut() },
-                        text = { Text(text = "Logout") },
+                        text = { Text(text = "Logout", fontStyle = MaterialTheme.typography.bodyMedium.fontStyle)},
 
                     )
+
                 }
             }
         },
@@ -280,7 +295,9 @@ fun MessageInput(onMessageSend: (String) -> Unit, modifier: Modifier = Modifier)
             value = message,
             onValueChange = { message = it },
             label = { Text(stringResource(R.string.textField_label)) },
-            modifier = Modifier.weight(0.8f).imePadding(),
+            modifier = Modifier
+                .weight(0.8f)
+                .imePadding(),
             maxLines = 4,
             singleLine = true,
             keyboardOptions = KeyboardOptions.Default.copy(
@@ -336,6 +353,7 @@ fun Greetings(){
             Text(
                 text = greetingStrings.random(),
                 textAlign = TextAlign.Center,
+                modifier = Modifier.padding(32.dp)
             )
         }
     }
@@ -344,13 +362,11 @@ fun Greetings(){
 
 
 
-@Preview(showSystemUi = true)
+@Preview()
 @Composable
 fun MainMenuPreview() {
-    LENATheme {
-        val navController = rememberNavController()
-        MainMenu(navController, AuthViewModel())
-    }}
+
+}
 
 @Preview
 @Composable
