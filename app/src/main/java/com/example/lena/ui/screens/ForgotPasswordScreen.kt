@@ -194,8 +194,10 @@ fun ForgotPasswordScreen(
                 Button(
                     onClick = {
                         viewModel.onForgotPasswordEmailFocusChanged(false)
-                        if (uiState.forgotPasswordEmailError) {
-                            // Show error message
+                        if (uiState.forgotPasswordEmail.isBlank()) {
+                            viewModel.setForgotEmailError("Email is required")
+                        } else if (!viewModel.validateEmail(uiState.forgotPasswordEmail)) {
+                            viewModel.setForgotEmailError("Invalid email address")
                         } else {
                             viewModel.resetPassword(uiState.forgotPasswordEmail)
                             keyboardController?.hide()

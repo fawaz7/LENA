@@ -324,46 +324,38 @@ class AuthViewModel : ViewModel() {
     //====================================================================================--> Forgot Password
 
     fun resetPassword(email: String) {
-        if (email.isBlank()) {
-            setForgotEmailError("Email is required")
-            return
-        } else if (!validateEmail(email)) {
-            setForgotEmailError("Invalid email address")
-            return
-        }
+        validateAndCheckEmail(email) { isValid, errorMessage ->
+            if (!isValid) {
+                setForgotEmailError(errorMessage)
+                return@validateAndCheckEmail
+            }
 
-        checkIfEmailExists(email) { exists ->
-            if (exists) {
-                _authState.value = AuthState.Loading
-                auth.sendPasswordResetEmail(email.trim()).addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        _uiState.update { it.copy(forgotPasswordSuccess = true) }
-                        clearAuthState()
-                    } else {
-                        _authState.value = AuthState.Error(task.exception?.message ?: "Unknown error")
-                        _uiState.update { it.copy(forgotPasswordSuccess = false) }
-                        clearAuthState()
-                    }
+            _authState.value = AuthState.Loading
+            auth.sendPasswordResetEmail(email.trim()).addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    _uiState.update { it.copy(forgotPasswordSuccess = true) }
+                    clearAuthState()
+                } else {
+                    _authState.value = AuthState.Error(task.exception?.message ?: "Unknown error")
+                    _uiState.update { it.copy(forgotPasswordSuccess = false) }
+                    clearAuthState()
                 }
-            } else {
-                setForgotEmailError("This email does not exist")
-                _authState.value = AuthState.Error("Email does not exist")
-                clearAuthState()
             }
         }
     }
 
-    fun checkIfEmailExists(email: String, onResult: (Boolean) -> Unit) {
-        if (email.isBlank()) {
-            onResult(false)
-            return
-        }
-        auth.fetchSignInMethodsForEmail(email.trim()).addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                val signInMethods = task.result?.signInMethods
-                onResult(signInMethods != null && signInMethods.isNotEmpty())
-            } else {
-                onResult(false)
+    fun validateAndCheckEmail(email: String, onResult: (Boolean, String) -> Unit) {
+        when {
+            email.isBlank() -> onResult(false, "Email is required")
+            !validateEmail(email) -> onResult(false, "Invalid email address")
+            else -> checkIfEmailExistsInFirestore(email) { exists ->
+                if (exists) {
+                    onResult(true, "")
+                    Log.i("email", "this email exists")
+                } else {
+                    onResult(false, "This email does not exist")
+                    Log.i("email", "this doesn't  exists")
+                }
             }
         }
     }
@@ -375,6 +367,19 @@ class AuthViewModel : ViewModel() {
                 forgotPasswordEmailError = false // Reset error on change
             )
         }
+    }
+
+    fun checkIfEmailExistsInFirestore(email: String, onResult: (Boolean) -> Unit) {
+        val usersCollection = fStore.collection("Users")
+        usersCollection.whereEqualTo("email", email.trim()).get()
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val documents = task.result
+                    onResult(documents != null && !documents.isEmpty)
+                } else {
+                    onResult(false)
+                }
+            }
     }
 
     fun onForgotPasswordEmailFocusChanged(focused: Boolean) {
