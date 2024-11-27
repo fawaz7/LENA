@@ -69,19 +69,26 @@ class AuthViewModel : ViewModel() {
 
     //====================================================================================--> Login
     fun login(email: String, password: String) {
+        val email = email.trim().lowercase()
+        validateAndCheckEmail(email) { isValid, errorMessage ->
+            if (!isValid) {
+                _authState.value = AuthState.Error(errorMessage)
+                return@validateAndCheckEmail
+            }
 
-        if (email.isBlank() || password.isBlank()) {
-            _authState.value = AuthState.Error("Email or password cannot be empty")
-            return
-        }
+            if (password.isBlank()) {
+                _authState.value = AuthState.Error("Password cannot be empty")
+                return@validateAndCheckEmail
+            }
 
-        _authState.value = AuthState.Loading
-        auth.signInWithEmailAndPassword(email.trim(), password).addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                _authState.value = AuthState.Authenticated
-            } else {
-                _authState.value = AuthState.Error(task.exception?.message ?: "Unknown error")
-                _authState.value = AuthState.Unauthenticated
+            _authState.value = AuthState.Loading
+            auth.signInWithEmailAndPassword(email, password).addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    _authState.value = AuthState.Authenticated
+                } else {
+                    _authState.value = AuthState.Error(task.exception?.message ?: "Unknown error")
+                    _authState.value = AuthState.Unauthenticated
+                }
             }
         }
     }
@@ -141,23 +148,30 @@ class AuthViewModel : ViewModel() {
             _authState.value = AuthState.Error("All fields must be filled and valid")
             return
         }
-        _authState.value = AuthState.Loading
-        auth.createUserWithEmailAndPassword(_uiState.value.signUpEmail, _uiState.value.password).addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                val userID = auth.currentUser?.uid ?: ""
-                val documentReference: DocumentReference = fStore.collection("Users").document(userID)
-                val user = mapOf(
-                    "firstName" to _uiState.value.firstName.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
-                    "lastName" to _uiState.value.lastName.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
-                    "email" to _uiState.value.signUpEmail
-                )
-                documentReference.set(user).addOnSuccessListener {
-                    _authState.value = AuthState.Authenticated
-                }.addOnFailureListener { e ->
-                    _authState.value = AuthState.Error(e.message ?: "Unknown error")
+        checkIfEmailExistsInFirestore(_uiState.value.signUpEmail) { exists ->
+            if (exists) {
+                _authState.value = AuthState.Error("Email already exists")
+                return@checkIfEmailExistsInFirestore
+            }
+
+            _authState.value = AuthState.Loading
+            auth.createUserWithEmailAndPassword(_uiState.value.signUpEmail.lowercase().trim(), _uiState.value.password).addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val userID = auth.currentUser?.uid ?: ""
+                    val documentReference: DocumentReference = fStore.collection("Users").document(userID)
+                    val user = mapOf(
+                        "firstName" to _uiState.value.firstName.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
+                        "lastName" to _uiState.value.lastName.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
+                        "email" to _uiState.value.signUpEmail.lowercase().trim()
+                    )
+                    documentReference.set(user).addOnSuccessListener {
+                        _authState.value = AuthState.Authenticated
+                    }.addOnFailureListener { e ->
+                        _authState.value = AuthState.Error(e.message ?: "Unknown error")
+                    }
+                } else {
+                    _authState.value = AuthState.Error(task.exception?.message ?: "Unknown error")
                 }
-            } else {
-                _authState.value = AuthState.Error(task.exception?.message ?: "Unknown error")
             }
         }
     }
@@ -324,6 +338,7 @@ class AuthViewModel : ViewModel() {
     //====================================================================================--> Forgot Password
 
     fun resetPassword(email: String) {
+        val email = email.trim().lowercase()
         validateAndCheckEmail(email) { isValid, errorMessage ->
             if (!isValid) {
                 setForgotEmailError(errorMessage)
@@ -331,7 +346,7 @@ class AuthViewModel : ViewModel() {
             }
 
             _authState.value = AuthState.Loading
-            auth.sendPasswordResetEmail(email.trim()).addOnCompleteListener { task ->
+            auth.sendPasswordResetEmail(email).addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     _uiState.update { it.copy(forgotPasswordSuccess = true) }
                     clearAuthState()
