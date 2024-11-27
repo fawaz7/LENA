@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -134,7 +135,15 @@ fun SignUpScreen(
                     actionIconContentColor = MaterialTheme.colorScheme.onBackground,
                     scrolledContainerColor = MaterialTheme.colorScheme.onBackground,
                 ),
-                modifier = modifier.height(64.dp)
+                modifier = modifier.height(64.dp),
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBackIosNew,
+                            contentDescription = "Back"
+                        )
+                    }
+                }
             )
         }
     ) { innerPadding ->

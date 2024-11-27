@@ -34,7 +34,11 @@ data class AuthUiState(
     val successfulSignUp: Boolean = false,
     val signUpPasswordErrorMessage: String = "",
     val firstNameErrorMessage: String = "",
-    val lastNameErrorMessage: String = ""
+    val lastNameErrorMessage: String = "",
+    val forgotPasswordEmail: String = "",
+    val forgotPasswordEmailError: Boolean = false,
+    val forgotPasswordErrorMessage: String = "",
+    val forgotPasswordSuccess: Boolean = false,
 )
 
 class AuthViewModel : ViewModel() {
@@ -63,7 +67,7 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    //====================================================================--> Login
+    //====================================================================================--> Login
     fun login(email: String, password: String) {
 
         if (email.isBlank() || password.isBlank()) {
@@ -77,6 +81,7 @@ class AuthViewModel : ViewModel() {
                 _authState.value = AuthState.Authenticated
             } else {
                 _authState.value = AuthState.Error(task.exception?.message ?: "Unknown error")
+                _authState.value = AuthState.Unauthenticated
             }
         }
     }
@@ -101,7 +106,6 @@ class AuthViewModel : ViewModel() {
             validateSignInForm()
         }
     }
-
 
     fun onSignInPasswordChange(newPassword: String) {
         _uiState.update {
@@ -130,9 +134,8 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-
-    //********************************************************************
-    //====================================================================--> Sign Up
+    //************************************************************************************
+    //====================================================================================--> Sign Up
     fun signUp() {
         if (!uiState.value.isSignUpFormValid) {
             _authState.value = AuthState.Error("All fields must be filled and valid")
@@ -244,7 +247,7 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    private fun validateEmail(email: String): Boolean {
+    fun validateEmail(email: String): Boolean {
         return Patterns.EMAIL_ADDRESS.matcher(email).matches()
     }
     //====================================================================--> Password Handling
@@ -317,9 +320,85 @@ class AuthViewModel : ViewModel() {
             )
         }
     }
+    //************************************************************************************
+    //====================================================================================--> Forgot Password
 
-    //********************************************************************
-    //====================================================================--> Miscellaneous
+    fun resetPassword(email: String) {
+        if (email.isBlank()) {
+            setForgotEmailError("Email is required")
+            return
+        } else if (!validateEmail(email)) {
+            setForgotEmailError("Invalid email address")
+            return
+        }
+
+        checkIfEmailExists(email) { exists ->
+            if (exists) {
+                _authState.value = AuthState.Loading
+                auth.sendPasswordResetEmail(email.trim()).addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        _uiState.update { it.copy(forgotPasswordSuccess = true) }
+                        clearAuthState()
+                    } else {
+                        _authState.value = AuthState.Error(task.exception?.message ?: "Unknown error")
+                        _uiState.update { it.copy(forgotPasswordSuccess = false) }
+                        clearAuthState()
+                    }
+                }
+            } else {
+                setForgotEmailError("This email does not exist")
+                _authState.value = AuthState.Error("Email does not exist")
+                clearAuthState()
+            }
+        }
+    }
+
+    fun checkIfEmailExists(email: String, onResult: (Boolean) -> Unit) {
+        if (email.isBlank()) {
+            onResult(false)
+            return
+        }
+        auth.fetchSignInMethodsForEmail(email.trim()).addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val signInMethods = task.result?.signInMethods
+                onResult(signInMethods != null && signInMethods.isNotEmpty())
+            } else {
+                onResult(false)
+            }
+        }
+    }
+
+    fun onForgotPasswordEmailChange(newEmail: String) {
+        _uiState.update {
+            it.copy(
+                forgotPasswordEmail = newEmail,
+                forgotPasswordEmailError = false // Reset error on change
+            )
+        }
+    }
+
+    fun onForgotPasswordEmailFocusChanged(focused: Boolean) {
+        if (!focused) {
+            _uiState.update {
+                it.copy(
+                    forgotPasswordEmail = it.forgotPasswordEmail.trim(),
+                    forgotPasswordEmailError = !validateEmail(it.forgotPasswordEmail.trim())
+                )
+            }
+        }
+    }
+
+    fun setForgotEmailError(errorMessage: String) {
+        _uiState.update {
+            it.copy(
+                forgotPasswordEmailError = true,
+                forgotPasswordErrorMessage = errorMessage
+            )
+        }
+    }
+
+    //************************************************************************************
+    //====================================================================================--> Miscellaneous
     fun signOut() {
         auth.signOut()
         _authState.value = AuthState.Unauthenticated
@@ -330,8 +409,9 @@ class AuthViewModel : ViewModel() {
         _uiState.value = AuthUiState()
     }
 
-
-
+    fun clearAuthState() {
+        _authState.value = AuthState.Unauthenticated
+    }
 }
 
 

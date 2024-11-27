@@ -279,7 +279,7 @@ fun LoginScreen(
                 text = "Forgot Password",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.clickable(onClick = { /*TODO*/ })
+                modifier = Modifier.clickable(onClick = { navController.navigate(Screens.ForgotPasswordScreen.name) })
             )
             Row {
                 Text(
