@@ -385,6 +385,7 @@ class AuthViewModel : ViewModel() {
     }
 
     fun checkIfEmailExistsInFirestore(email: String, onResult: (Boolean) -> Unit) {
+        val email = email.trim().lowercase()
         val usersCollection = fStore.collection("Users")
         usersCollection.whereEqualTo("email", email.trim()).get()
             .addOnCompleteListener { task ->
