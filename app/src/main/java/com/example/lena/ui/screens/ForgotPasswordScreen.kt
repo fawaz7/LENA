@@ -1,10 +1,14 @@
 package com.example.lena.ui.screens
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -37,9 +41,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -121,8 +128,16 @@ fun ForgotPasswordScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ){
-
-            Crossfade(targetState = isImeVisible, label = "Welcome Screen Label Animation") { isKeyboardVisible ->
+            val visibleState = remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                visibleState.value = true
+            }
+            AnimatedVisibility(
+                visible = visibleState.value,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = fadeOut()
+            ){
+                Crossfade(targetState = isImeVisible, label = "Welcome Screen Label Animation") { isKeyboardVisible ->
                 Column(modifier.align(Alignment.CenterHorizontally).padding(horizontal = 32.dp)) {
                     Text(
                         text = "Forgot Password?",
@@ -140,6 +155,8 @@ fun ForgotPasswordScreen(
                     )
                 }
             }
+        }
+
             Spacer(modifier = modifier.height(firstSpacerHeight).fillMaxWidth())
             Column(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).imePadding(),

@@ -5,6 +5,10 @@ import android.app.Activity
 import android.view.View
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -94,6 +98,7 @@ fun MainMenu(navController: NavController, authViewModel: AuthViewModel) {
     val context = LocalContext.current
     val activity = context as? Activity
 
+
     LaunchedEffect(authState.value) {
         when(authState.value) {
             is AuthState.Unauthenticated -> {
@@ -122,7 +127,7 @@ fun MainMenu(navController: NavController, authViewModel: AuthViewModel) {
 
 
     Scaffold(
-        topBar = { MainMenuTopBar(viewModel = authViewModel) }
+        topBar = { MainMenuTopBar(viewModel = authViewModel, navController = navController) }
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -162,7 +167,7 @@ fun MainMenu(navController: NavController, authViewModel: AuthViewModel) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainMenuTopBar(modifier: Modifier = Modifier, viewModel: AuthViewModel) {
+fun MainMenuTopBar(modifier: Modifier = Modifier, viewModel: AuthViewModel, navController: NavController) {
     var optionsMenu by remember { mutableStateOf(false) }
     TopAppBar(
         title = {
@@ -173,9 +178,10 @@ fun MainMenuTopBar(modifier: Modifier = Modifier, viewModel: AuthViewModel) {
                     fontWeight = FontWeight.Light,
                     modifier = Modifier.weight(0.8f)
                 )
-                Image(
-                    painter = painterResource(id = if (isSystemInDarkTheme()) R.drawable.medusa_white else R.drawable.medusa_black),
+                Icon(
+                    painter = painterResource(id = R.drawable.menu),
                     contentDescription = stringResource(R.string.Logo),
+                    tint = if (isSystemInDarkTheme()) Color.White else Color.Black,
                     modifier = Modifier
                         .size(36.dp)
                         .clickable(
@@ -194,12 +200,17 @@ fun MainMenuTopBar(modifier: Modifier = Modifier, viewModel: AuthViewModel) {
                     )
                 ){
                     DropdownMenuItem(
-                        onClick = {  },
+                        onClick = {
+                            optionsMenu = false
+                            navController.navigate(Screens.MyAccountScreen.name
+                            ) },
                         text = { Text(text = "My Account", fontStyle = MaterialTheme.typography.bodyMedium.fontStyle) },
 
                         )
                     DropdownMenuItem(
-                        onClick = { viewModel.signOut() },
+                        onClick = {
+                            optionsMenu = false
+                            viewModel.signOut() },
                         text = { Text(text = "Logout", fontStyle = MaterialTheme.typography.bodyMedium.fontStyle)},
 
                     )
@@ -220,15 +231,26 @@ fun MainMenuTopBar(modifier: Modifier = Modifier, viewModel: AuthViewModel) {
 
 @Composable
 fun MessageList(modifier: Modifier = Modifier, messageList: List<MessageModel>) {
+    val visibleState = remember { mutableStateOf(false) }
     if (messageList.isEmpty()) {
-        Box(
+
+        LaunchedEffect(Unit) {
+            visibleState.value = true
+        }
+        AnimatedVisibility(
+            visible = visibleState.value,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = fadeOut()
+        )
+        {Box(
             modifier = Modifier
                 .fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             Greetings()
-        }
+        }}
     } else {
+        visibleState.value = false
         LazyColumn(
             modifier = modifier.fillMaxSize(),
             reverseLayout = true

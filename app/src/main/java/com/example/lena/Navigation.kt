@@ -9,6 +9,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.lena.ui.screens.ForgotPasswordScreen
 import com.example.lena.ui.screens.LoginScreen
 import com.example.lena.ui.screens.MainMenu
+import com.example.lena.ui.screens.MyAccountScreen
 import com.example.lena.ui.screens.SignUpScreen
 import com.example.lena.viewModels.AuthViewModel
 
@@ -17,6 +18,7 @@ enum class Screens{
     MainMenu,
     SignUpScreen,
     ForgotPasswordScreen,
+    MyAccountScreen,
 }
 
 @Composable
@@ -36,6 +38,9 @@ fun LenaAppNavigation(viewModel: AuthViewModel){
         }
         composable(Screens.ForgotPasswordScreen.name){
             ForgotPasswordScreen(navController = navController, viewModel = viewModel)
+        }
+        composable(Screens.MyAccountScreen.name){
+            MyAccountScreen(navController = navController,)
         }
     }
 }

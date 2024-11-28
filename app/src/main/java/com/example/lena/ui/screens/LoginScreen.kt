@@ -1,10 +1,14 @@
 package com.example.lena.ui.screens
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -14,6 +18,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -42,6 +47,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -86,7 +93,7 @@ fun LoginScreen(
     val authState = authViewModel.authState.observeAsState()
     val context = LocalContext.current
 
-    val logoSize by animateDpAsState(targetValue = if (isImeVisible) 80.dp else 270.dp, animationSpec = tween(durationMillis = 300),
+    val logoSize by animateDpAsState(targetValue = if (isImeVisible) 80.dp else 240.dp, animationSpec = tween(durationMillis = 300),
         label = "LogoSize Animation"
     )
     val textSize by animateFloatAsState(targetValue = if (isImeVisible) 34f else 28f, animationSpec = tween(durationMillis = 300),
@@ -95,7 +102,7 @@ fun LoginScreen(
     val subTextSize by animateFloatAsState(targetValue = if (isImeVisible) 20f else 16f, animationSpec = tween(durationMillis = 300),
         label = "subTextSize Animation"
     )
-    val spacerHeight by animateDpAsState(targetValue = if (isImeVisible) 0.dp else 40.dp, animationSpec = tween(durationMillis = 300),
+    val spacerHeight by animateDpAsState(targetValue = if (isImeVisible) 0.dp else 20.dp, animationSpec = tween(durationMillis = 300),
         label = "SpacerHeight Animation"
     )
     val subSpacerHeight by animateDpAsState(targetValue = if (isImeVisible) 4.dp else 20.dp, animationSpec = tween(durationMillis = 300),
@@ -151,14 +158,18 @@ fun LoginScreen(
                             Image(
                                 painter = painterResource(id = if (isSystemInDarkTheme()) R.drawable.full_logo_white else R.drawable.full_logo_black),
                                 contentDescription = "Default Logo",
-                                modifier = Modifier.size(logoSize).align(Alignment.Center)
+                                modifier = Modifier
+                                    .size(logoSize)
+                                    .align(Alignment.Center)
                             )
                         }
                         true -> {
                             Image(
                                 painter = painterResource(id = if (isSystemInDarkTheme()) R.drawable.medusa_white else R.drawable.medusa_black),
                                 contentDescription = "Keyboard Active Logo",
-                                modifier = Modifier.size(logoSize).align(Alignment.Center)
+                                modifier = Modifier
+                                    .size(logoSize)
+                                    .align(Alignment.Center)
                             )
                         }
                     }
@@ -166,8 +177,17 @@ fun LoginScreen(
             }
 
             Spacer(modifier.height(28.dp))
+            val visibleState = remember { mutableStateOf(false) }
 
-            Crossfade(targetState = isImeVisible, label = "Welcome Screen Label") {
+            LaunchedEffect(Unit) {
+                visibleState.value = true
+            }
+            AnimatedVisibility(
+                visible = visibleState.value,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = fadeOut()
+            ){
+                Crossfade(targetState = isImeVisible, label = "Welcome Screen Label") {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Spacer(modifier.height(spacerHeight))
                     Text(
@@ -186,7 +206,7 @@ fun LoginScreen(
                     )
                     Spacer(modifier.height(subSpacerHeight))
                 }
-            }
+            }}
 
             Spacer(modifier.height(20.dp))
             //=================================--> Email
@@ -255,6 +275,7 @@ fun LoginScreen(
             }
 
             //====================================--> Login Button
+            Spacer(Modifier.height(16.dp).fillMaxWidth())
             Button(
                 onClick = { authViewModel.login(uiState.loginEmail, uiState.password) },
                 enabled = uiState.isLogInFormValid && authState.value != AuthState.Loading,
@@ -275,27 +296,31 @@ fun LoginScreen(
                 }
             }
 
-            Text(
-                text = "Forgot Password",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.clickable(onClick = { navController.navigate(Screens.ForgotPasswordScreen.name) })
-            )
-            Row {
-                Text(
-                    text = "Don't have an account?",
-                    color = Color.Gray,
-                    fontSize = 12.sp,
-                )
-                Text(
-                    text = " Sign Up",
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 12.sp,
-                    modifier = Modifier.clickable(onClick = {
-                        navController.navigate(Screens.SignUpScreen.name)
-                        authViewModel.resetUiState()
-                    })
-                )
+            Box(Modifier.fillMaxSize()) {
+                Column(Modifier.fillMaxWidth().align(Alignment.BottomCenter), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Forgot Password",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.clickable(onClick = { navController.navigate(Screens.ForgotPasswordScreen.name) })
+                    )
+                    Row {
+                        Text(
+                            text = "Don't have an account?",
+                            color = Color.Gray,
+                            fontSize = 12.sp,
+                        )
+                        Text(
+                            text = " Sign Up",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 12.sp,
+                            modifier = Modifier.clickable(onClick = {
+                                navController.navigate(Screens.SignUpScreen.name)
+                                authViewModel.resetUiState()
+                            })
+                        )
+                    }
+                }
             }
         }
     }

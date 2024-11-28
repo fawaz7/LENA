@@ -1,10 +1,14 @@
 package com.example.lena.ui.screens
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -155,8 +159,16 @@ fun SignUpScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = modifier.height(firstSpacerHeight).fillMaxWidth())
-
-            Crossfade(targetState = isImeVisible, label = "Welcome Screen Label Animation") { isKeyboardVisible ->
+            val visibleState = remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                visibleState.value = true
+            }
+            AnimatedVisibility(
+                visible = visibleState.value,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = fadeOut()
+            )
+            {Crossfade(targetState = isImeVisible, label = "Welcome Screen Label Animation") { isKeyboardVisible ->
                 Column(modifier.align(Alignment.CenterHorizontally)) {
                     Spacer(modifier.height(spacerHeight))
                     Text(
@@ -173,7 +185,7 @@ fun SignUpScreen(
                     )
                 }
                 Spacer(modifier.height(subSpacerHeight))
-            }
+            }}
             Spacer(modifier = modifier.height(firstSpacerHeight).fillMaxWidth())
             Box(modifier = modifier) {
                 Column(
