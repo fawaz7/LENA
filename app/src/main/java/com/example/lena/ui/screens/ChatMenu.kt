@@ -169,6 +169,7 @@ fun MainMenu(navController: NavController, authViewModel: AuthViewModel) {
 @Composable
 fun MainMenuTopBar(modifier: Modifier = Modifier, viewModel: AuthViewModel, navController: NavController) {
     var optionsMenu by remember { mutableStateOf(false) }
+    var confirmSignOutDialog = remember { mutableStateOf(false) }
     TopAppBar(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -210,11 +211,25 @@ fun MainMenuTopBar(modifier: Modifier = Modifier, viewModel: AuthViewModel, navC
                     DropdownMenuItem(
                         onClick = {
                             optionsMenu = false
-                            viewModel.signOut() },
+                            confirmSignOutDialog.value = true
+                             },
                         text = { Text(text = "Logout", fontStyle = MaterialTheme.typography.bodyMedium.fontStyle)},
-
                     )
-
+                }
+                if(confirmSignOutDialog.value){
+                    ConfirmationDialog(
+                        title = "Logout",
+                        message = "Are you sure you want to logout?",
+                        onConfirm = {
+                            confirmSignOutDialog.value = false
+                            viewModel.signOut()
+                        },
+                        onDismiss = {
+                            confirmSignOutDialog.value = false
+                        },
+                        confirmationText = "Yes, Logout",
+                        dismissText = "Cancel"
+                    )
                 }
             }
         },
