@@ -13,10 +13,16 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -60,14 +66,15 @@ internal fun ConfirmationDialog(
 internal fun InputConfirmationDialog(
     title: String,
     message: String,
-    onConfirm: () -> Unit,
+    onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
     confirmationText: String,
     dismissText: String,
     inputLabel: String,
     confirmColor: Color = MaterialTheme.colorScheme.onSurface,
+    type: String = "text"
 ) {
-    var input = ""
+    var input by remember { mutableStateOf("") }
     AlertDialog(
 
         onDismissRequest = { onDismiss() },
@@ -81,12 +88,13 @@ internal fun InputConfirmationDialog(
                     label = { Text(text = inputLabel) },
                     modifier = Modifier,
                     singleLine = true,
+                    visualTransformation = if (type == "password") PasswordVisualTransformation() else VisualTransformation.None
                 )
             }
 
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm() }) {
+            TextButton(onClick = { onConfirm(input) }) {
                 Text(
                     text = confirmationText,
                     color = confirmColor

@@ -1,12 +1,14 @@
 package com.example.lena.ui.screens
 
 import android.app.Activity
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,8 +20,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -28,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,17 +41,22 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -57,6 +68,8 @@ import com.example.lena.ui.rememberImeState
 import com.example.lena.ui.theme.Gray800
 import com.example.lena.ui.theme.Gray900
 import com.example.lena.ui.theme.LENATheme
+import com.example.lena.viewModels.AuthState
+import com.example.lena.viewModels.AuthViewModel
 
 
 enum class SelectedOption {
@@ -64,7 +77,7 @@ enum class SelectedOption {
 }
 
 @Composable
-fun MyAccountScreen(navController: NavController,) {
+fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
 
     val context = LocalContext.current
     val activity = context as? Activity
@@ -72,16 +85,32 @@ fun MyAccountScreen(navController: NavController,) {
     val isImeVisible by rememberImeState()
     val GreetingVisibleState = remember { mutableStateOf(false) }
     val selectedOption = remember { mutableStateOf<SelectedOption?>(null) }
-
     val changeEmailDialog = remember { mutableStateOf(false) }
     val signOutDialog = remember { mutableStateOf(false) }
     val deleteAccountDialog = remember { mutableStateOf(false) }
     val confirmDeleteDialog = remember { mutableStateOf(false) }
+    val uiState by viewModel.uiState.collectAsState()
 
 
 
     LaunchedEffect(Unit) {
         GreetingVisibleState.value = true
+    }
+
+    LaunchedEffect(viewModel.authState.value) {
+        when (val state = viewModel.authState.value) {
+            is AuthState.Authenticated -> {
+                Toast.makeText(context, "Email updated successfully.", Toast.LENGTH_LONG).show()
+            }
+            is AuthState.Error -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
+            }
+            AuthState.Loading -> {
+                // Optionally show a loading toast
+                Toast.makeText(context, "Loading...", Toast.LENGTH_LONG).show()
+            }
+            else -> Unit
+        }
     }
 
 
@@ -102,7 +131,10 @@ fun MyAccountScreen(navController: NavController,) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(innerPadding),
+                .padding(innerPadding)
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = { focusManager.clearFocus() })
+                },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(modifier = Modifier.height(64.dp).fillMaxWidth())
@@ -117,7 +149,7 @@ fun MyAccountScreen(navController: NavController,) {
                     Modifier.align(Alignment.CenterHorizontally).padding(horizontal = 32.dp)
                 ) {
                     Text(
-                        text = "Hi Fawaz",
+                        text = "Hi ${uiState.authorizedUserFirstName}",
                         fontWeight = FontWeight.Bold,
                         fontSize = 32.sp,
                         textAlign = TextAlign.Center,
@@ -159,19 +191,71 @@ fun MyAccountScreen(navController: NavController,) {
                         exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            var email by remember { mutableStateOf("") }
                             OutlinedTextField(
-                                value = email,
-                                onValueChange = { email = it },
-                                label = { Text(text = "New Email Address") },
-                                modifier = Modifier,
-                                singleLine = true,
+                                value = uiState.authorizedUserEmail,
+                                onValueChange = {},
+                                enabled = false,
+                                label = { Text(text = "Current Email Address") },
                             )
+                            OutlinedTextField(
+                                value = uiState.authorizedNewEmailAddress,
+                                onValueChange = { viewModel.onAuthorizedNewEmailChange(it) },
+                                label = { Text(text = "New Email Address") },
+                                modifier = Modifier.onFocusChanged { focusState ->
+                                    if (!focusState.isFocused) {
+                                        viewModel.onAuthorizedNewEmailFocusChanged(focusState.isFocused)
+                                    }
+                                },
+                                singleLine = true,
+                                trailingIcon = { Icon(imageVector = Icons.Default.Email, contentDescription = "Email Icon") },
+                                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done, keyboardType = KeyboardType.Email),
+                                keyboardActions = KeyboardActions(onDone = {
+                                    if (!uiState.authorizedNewEmailError && uiState.authorizedNewEmailAddress.isNotBlank() && android.util.Patterns.EMAIL_ADDRESS.matcher(uiState.authorizedNewEmailAddress).matches()) {
+                                        changeEmailDialog.value = true
+                                    } else {
+                                        viewModel.onAuthorizedNewEmailFocusChanged(false) // Show error message
+                                    }
+                                }),
+                                isError = uiState.authorizedNewEmailError && uiState.authorizedNewEmailAddress.isNotBlank(),
+                                supportingText = {
+                                    if (uiState.authorizedNewEmailError && uiState.authorizedNewEmailAddress.isNotBlank()) {
+                                        Text(text = "Invalid Email Address", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+
+                            )
+
                             SubmitButton(
                                 text = "Submit",
-                                onClick = { changeEmailDialog.value = true },
-                                isEnabled = true,
+                                onClick = {
+                                    if (!uiState.authorizedNewEmailError && uiState.authorizedNewEmailAddress.isNotBlank() && android.util.Patterns.EMAIL_ADDRESS.matcher(uiState.authorizedNewEmailAddress).matches()) {
+                                        changeEmailDialog.value = true
+                                    } else {
+                                        viewModel.onAuthorizedNewEmailFocusChanged(false) // Show error message
+                                    }
+                                },
+                                isEnabled = !uiState.authorizedNewEmailError && uiState.authorizedNewEmailAddress.isNotBlank(),
                             )
+
+                            if (changeEmailDialog.value){
+                                InputConfirmationDialog(
+                                    title = "Change Email?",
+                                    message = "Please Type your Password again to confirm changing your current email to ${uiState.authorizedNewEmailAddress}\n",
+                                    onConfirm = { password ->
+                                        viewModel.changeEmail(uiState.authorizedNewEmailAddress,password)
+                                        changeEmailDialog.value = false
+                                    },
+                                    onDismiss = { changeEmailDialog.value = false },
+                                    confirmationText = "Yes, Change Email",
+                                    dismissText = "Cancel",
+                                    inputLabel = "Confirm Password",
+                                    type = "password",
+                                )
+                            }
                         }
                     }
 
@@ -332,7 +416,7 @@ fun MyAccountTopBar(modifier: Modifier = Modifier, navController: NavController/
 @Composable
 fun MyAccountPreview(){
     LENATheme(darkTheme = true) {
-        MyAccountScreen(navController = rememberNavController())
+        MyAccountScreen(navController = rememberNavController(), AuthViewModel())
 
     }
 }

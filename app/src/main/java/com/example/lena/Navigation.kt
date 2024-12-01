@@ -40,7 +40,7 @@ fun LenaAppNavigation(viewModel: AuthViewModel){
             ForgotPasswordScreen(navController = navController, viewModel = viewModel)
         }
         composable(Screens.MyAccountScreen.name){
-            MyAccountScreen(navController = navController,)
+            MyAccountScreen(navController = navController, viewModel = viewModel)
         }
     }
 }

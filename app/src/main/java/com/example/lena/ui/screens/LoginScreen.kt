@@ -27,6 +27,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -221,8 +222,8 @@ fun LoginScreen(
                             authViewModel.onLoginEmailFocusChanged(focusState.isFocused)
                         }
                     },
-                trailingIcon = { Icon(imageVector = Icons.Default.AccountCircle, contentDescription = "Email Icon") },
-                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next),
+                trailingIcon = { Icon(imageVector = Icons.Default.Email, contentDescription = "Email Icon") },
+                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next, keyboardType = KeyboardType.Email),
                 keyboardActions = KeyboardActions(onNext = { passwordFocusRequester.requestFocus() }),
                 singleLine = true,
                 isError = uiState.loginEmailError && uiState.loginEmail.isNotBlank(),

@@ -5,6 +5,7 @@ import android.util.Patterns
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
@@ -39,6 +40,10 @@ data class AuthUiState(
     val forgotPasswordEmailError: Boolean = false,
     val forgotPasswordErrorMessage: String = "",
     val forgotPasswordSuccess: Boolean = false,
+    val authorizedUserFirstName: String = "",
+    val authorizedUserEmail: String = "",
+    val authorizedNewEmailAddress: String = "",
+    val authorizedNewEmailError: Boolean = false,
 )
 
 class AuthViewModel : ViewModel() {
@@ -56,6 +61,7 @@ class AuthViewModel : ViewModel() {
 
     init {
         checkAuthStatus()
+        fetchUserInfo()
     }
 
     fun checkAuthStatus() {
@@ -417,8 +423,100 @@ class AuthViewModel : ViewModel() {
             )
         }
     }
-
     //************************************************************************************
+    //====================================================================================--> MyAccount
+    fun fetchUserInfo() {
+        val user = auth.currentUser
+        user?.let {
+            val userId = it.uid
+            val userRef = fStore.collection("Users").document(userId)
+            userRef.get().addOnSuccessListener { document ->
+                if (document != null) {
+                    val firstName = document.getString("firstName") ?: ""
+                    _uiState.update { state -> state.copy(authorizedUserFirstName =  firstName) }
+                    val email = document.getString("email") ?: ""
+                    _uiState.update { state -> state.copy(authorizedUserEmail =  email) }
+                }
+            }.addOnFailureListener { exception ->
+                Log.w("AuthViewModel", "Error getting documents: ", exception)
+            }
+        }
+    }
+
+
+    fun onAuthorizedNewEmailChange(newEmail: String) {
+        _uiState.update {
+            it.copy(
+                authorizedNewEmailAddress = newEmail,
+                authorizedNewEmailError = false // Reset error on change
+            )
+        }
+    }
+
+    fun onAuthorizedNewEmailFocusChanged(focused: Boolean) {
+        if (!focused) {
+            _uiState.update {
+                it.copy(
+                    authorizedNewEmailAddress = it.authorizedNewEmailAddress.trim(),
+                    authorizedNewEmailError = !validateEmail(it.authorizedNewEmailAddress.trim())
+                )
+            }
+        }
+    }
+
+    private fun reauthenticateUser(password: String, onComplete: (Boolean) -> Unit) {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            val credential = EmailAuthProvider.getCredential(currentUser.email!!, password)
+            currentUser.reauthenticate(credential).addOnCompleteListener { task ->
+                onComplete(task.isSuccessful)
+            }
+        } else {
+            onComplete(false)
+        }
+    }
+
+    fun changeEmail(newEmail: String, password: String) {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            _authState.value = AuthState.Loading
+
+            reauthenticateUser(password) { success ->
+                if (success) {
+                    currentUser.verifyBeforeUpdateEmail(newEmail).addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            Log.d("AuthViewModel", "Verification email sent to $newEmail")
+
+                            // Listen for email verification and update Firestore
+                            FirebaseAuth.getInstance().addAuthStateListener { auth ->
+                                val user = auth.currentUser
+                                if (user != null && user.isEmailVerified) {
+                                    FirebaseFirestore.getInstance().collection("Users").document(user.uid)
+                                        .update("email", user.email!!)
+                                        .addOnSuccessListener {
+                                            _authState.value = AuthState.Authenticated
+                                            Log.d("Firestore", "Email updated successfully.")
+                                        }
+                                        .addOnFailureListener { e ->
+                                            _authState.value = AuthState.Error(e.message ?: "Unknown error")
+                                            Log.w("Firestore", "Error updating email", e)
+                                        }
+                                }
+                            }
+                        } else {
+                            _authState.value = AuthState.Error(task.exception?.message ?: "Unknown error")
+                            Log.w("AuthViewModel", "Error sending verification email", task.exception)
+                        }
+                    }
+                } else {
+                    _authState.value = AuthState.Error("Re-authentication failed")
+                    Log.w("AuthViewModel", "Re-authentication failed")
+                }
+            }
+        } else {
+            _authState.value = AuthState.Error("User not authenticated")
+        }
+    }
     //====================================================================================--> Miscellaneous
     fun signOut() {
         auth.signOut()
