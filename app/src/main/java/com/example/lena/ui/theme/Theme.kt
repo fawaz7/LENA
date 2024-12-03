@@ -22,7 +22,8 @@ private val LightColorScheme = lightColorScheme(
     onBackground = LightOnBackground,
     onSurface = LightOnBackground,
     outline = LightOutline,
-    error = Color(0xFFB00020) // Default Material Error Color
+    error = Color(0xFFB00020),
+
 )
 
 private val DarkColorScheme = darkColorScheme(

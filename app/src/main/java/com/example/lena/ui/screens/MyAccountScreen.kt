@@ -3,16 +3,19 @@ package com.example.lena.ui.screens
 import android.app.Activity
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,7 +27,10 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -54,20 +60,25 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.lena.R
+import com.example.lena.Screens
 import com.example.lena.ui.rememberImeState
+import com.example.lena.ui.theme.DarkSuccess
 import com.example.lena.ui.theme.Gray800
 import com.example.lena.ui.theme.Gray900
 import com.example.lena.ui.theme.LENATheme
+import com.example.lena.ui.theme.LightSuccess
 import com.example.lena.viewModels.AuthState
 import com.example.lena.viewModels.AuthViewModel
 
@@ -100,14 +111,13 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
     LaunchedEffect(viewModel.authState.value) {
         when (val state = viewModel.authState.value) {
             is AuthState.Authenticated -> {
-                Toast.makeText(context, "Email updated successfully.", Toast.LENGTH_LONG).show()
+                viewModel.fetchUserInfo()
+                viewModel.fetchVerificationStatus()
             }
             is AuthState.Error -> {
                 Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
             }
-            AuthState.Loading -> {
-                // Optionally show a loading toast
-                Toast.makeText(context, "Loading...", Toast.LENGTH_LONG).show()
+            is AuthState.Loading -> {
             }
             else -> Unit
         }
@@ -186,16 +196,38 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
                         }
                     )
                     AnimatedVisibility(
-                        visible = selectedOption.value == SelectedOption.ChangeEmail,
-                        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-                    ) {
+                            visible = selectedOption.value == SelectedOption.ChangeEmail,
+                            enter = slideInVertically(initialOffsetY = { -it/2 }, ) + fadeIn(animationSpec = tween(durationMillis = 150)),
+                            exit = slideOutVertically(targetOffsetY = { -it/2 }, ) + fadeOut(animationSpec = tween(durationMillis = 150))
+                        ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedTextField(
                                 value = uiState.authorizedUserEmail,
                                 onValueChange = {},
                                 enabled = false,
+                                singleLine = true,
                                 label = { Text(text = "Current Email Address") },
+                                leadingIcon = {
+                                    if (uiState.isAuthorizedUserVerified){
+                                        Icon(imageVector = Icons.Default.CheckCircle, contentDescription = "Checked mark", tint = if (isSystemInDarkTheme()) DarkSuccess else LightSuccess)
+                                    } else { Icon(imageVector = Icons.Filled.Info , contentDescription = "Checked mark", tint = MaterialTheme.colorScheme.error) }
+                                },
+                                supportingText = {
+                                    if (uiState.isAuthorizedUserVerified){
+                                    Text(text = "This email address is verified", color = if (isSystemInDarkTheme()) DarkSuccess else LightSuccess)
+                                    } else {
+                                        Column(){
+                                            Text(text = "This email address is not verified. ", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                                            Text(
+                                                text = "resend verification email.",
+                                                color = MaterialTheme.colorScheme.error,
+                                                style = MaterialTheme.typography.bodySmall.merge(TextStyle(textDecoration = TextDecoration.Underline)),
+                                                modifier = Modifier
+                                                    .clickable(
+                                                    ) { /*TODO Resend verification email*/ },                                                )
+                                        }
+                                    }
+                                },
                             )
                             OutlinedTextField(
                                 value = uiState.authorizedNewEmailAddress,
@@ -232,7 +264,7 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
                             SubmitButton(
                                 text = "Submit",
                                 onClick = {
-                                    if (!uiState.authorizedNewEmailError && uiState.authorizedNewEmailAddress.isNotBlank() && android.util.Patterns.EMAIL_ADDRESS.matcher(uiState.authorizedNewEmailAddress).matches()) {
+                                    if (!uiState.authorizedNewEmailError && uiState.authorizedNewEmailAddress.isNotBlank()) {
                                         changeEmailDialog.value = true
                                     } else {
                                         viewModel.onAuthorizedNewEmailFocusChanged(false) // Show error message
@@ -244,10 +276,12 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
                             if (changeEmailDialog.value){
                                 InputConfirmationDialog(
                                     title = "Change Email?",
-                                    message = "Please Type your Password again to confirm changing your current email to ${uiState.authorizedNewEmailAddress}\n",
+                                    message = "Please Type your Password again to confirm changing your current email to ${uiState.authorizedNewEmailAddress}\n" +
+                                            "Please note that you will be signed out to confirm the changes",
                                     onConfirm = { password ->
                                         viewModel.changeEmail(uiState.authorizedNewEmailAddress,password)
                                         changeEmailDialog.value = false
+                                        navController.navigate(Screens.MainMenu.name)
                                     },
                                     onDismiss = { changeEmailDialog.value = false },
                                     confirmationText = "Yes, Change Email",
@@ -270,8 +304,8 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
                     )
                     AnimatedVisibility(
                         visible = selectedOption.value == SelectedOption.ChangePassword,
-                        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                        enter = slideInVertically(initialOffsetY = { -it/2 }) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { -it/2 }) + fadeOut()
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             var password by remember { mutableStateOf("") }
@@ -328,7 +362,10 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
                                 ConfirmationDialog(
                                     title = "Sign Out",
                                     message = "Are you sure you want to sign out?",
-                                    onConfirm = {},
+                                    onConfirm = {
+                                        viewModel.signOut()
+                                        signOutDialog.value = false
+                                    },
                                     onDismiss = { signOutDialog.value = false },
                                     confirmationText = "Sign Out",
                                     dismissText = "Cancel"

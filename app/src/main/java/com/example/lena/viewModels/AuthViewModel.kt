@@ -44,6 +44,7 @@ data class AuthUiState(
     val authorizedUserEmail: String = "",
     val authorizedNewEmailAddress: String = "",
     val authorizedNewEmailError: Boolean = false,
+    val isAuthorizedUserVerified: Boolean = false,
 )
 
 class AuthViewModel : ViewModel() {
@@ -62,6 +63,7 @@ class AuthViewModel : ViewModel() {
     init {
         checkAuthStatus()
         fetchUserInfo()
+        fetchVerificationStatus()
     }
 
     fun checkAuthStatus() {
@@ -76,21 +78,49 @@ class AuthViewModel : ViewModel() {
     //====================================================================================--> Login
     fun login(email: String, password: String) {
         val email = email.trim().lowercase()
-        validateAndCheckEmail(email) { isValid, errorMessage ->
+        validateEmail(email) { isValid, errorMessage ->
             if (!isValid) {
                 _authState.value = AuthState.Error(errorMessage)
-                return@validateAndCheckEmail
+                Log.e("login", "this email is not valid") //********
             }
 
             if (password.isBlank()) {
                 _authState.value = AuthState.Error("Password cannot be empty")
-                return@validateAndCheckEmail
+                Log.e("login", "this password is empty") //********
             }
 
             _authState.value = AuthState.Loading
             auth.signInWithEmailAndPassword(email, password).addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    _authState.value = AuthState.Authenticated
+                    val user = auth.currentUser
+                    if (user != null) {
+                        if (user.isEmailVerified) {
+                            Log.i("login", "this email is verified") //********
+                            val userId = user.uid
+                            val userRef = fStore.collection("Users").document(userId)
+                            userRef.get().addOnSuccessListener { document ->
+                                if (document != null) {
+                                    val storedEmail = document.getString("email") ?: ""
+                                    if (storedEmail != user.email) {
+                                        userRef.update("email", user.email!!)
+                                        Log.i("login", "this email is not the same and updated successfully") //********
+                                    } else {Log.i("login", "this email is the same")} //********
+                                    _authState.value = AuthState.Authenticated
+                                } else {
+                                    _authState.value = AuthState.Error("User not found in Firestore")
+                                    Log.e("login", "this email is not found in firestore") //********
+                                }
+                            }.addOnFailureListener { e ->
+                                _authState.value = AuthState.Error(e.message ?: "Unknown error")
+                            }
+                        } else {
+                            _authState.value = AuthState.Error("Email is not verified")
+                            Log.i("login", "this email is not verified") //********
+                        }
+                    } else {
+                        _authState.value = AuthState.Error("User not found")
+                        Log.e("login", "this email is not found") //********
+                    }
                 } else {
                     _authState.value = AuthState.Error(task.exception?.message ?: "Unknown error")
                     _authState.value = AuthState.Unauthenticated
@@ -171,7 +201,13 @@ class AuthViewModel : ViewModel() {
                         "email" to _uiState.value.signUpEmail.lowercase().trim()
                     )
                     documentReference.set(user).addOnSuccessListener {
-                        _authState.value = AuthState.Authenticated
+                        auth.currentUser?.sendEmailVerification()?.addOnCompleteListener { verificationTask ->
+                            if (verificationTask.isSuccessful) {
+                                _authState.value = AuthState.Authenticated
+                            } else {
+                                _authState.value = AuthState.Error(verificationTask.exception?.message ?: "Unknown error")
+                            }
+                        }
                     }.addOnFailureListener { e ->
                         _authState.value = AuthState.Error(e.message ?: "Unknown error")
                     }
@@ -381,6 +417,14 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    fun validateEmail(email: String, onResult: (Boolean, String) -> Unit) {
+        when {
+            email.isBlank() -> onResult(false, "Email is required")
+            !validateEmail(email) -> onResult(false, "Invalid email address")
+            else -> onResult(true, "Validation successful")
+        }
+    }
+
     fun onForgotPasswordEmailChange(newEmail: String) {
         _uiState.update {
             it.copy(
@@ -443,6 +487,14 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    fun fetchVerificationStatus() {
+        val user = auth.currentUser
+        if (user != null) {
+            _uiState.update { state -> state.copy(isAuthorizedUserVerified = user.isEmailVerified) }
+        } else {
+            _uiState.update { state -> state.copy(isAuthorizedUserVerified = false) }
+        }
+    }
 
     fun onAuthorizedNewEmailChange(newEmail: String) {
         _uiState.update {
@@ -485,38 +537,28 @@ class AuthViewModel : ViewModel() {
                 if (success) {
                     currentUser.verifyBeforeUpdateEmail(newEmail).addOnCompleteListener { task ->
                         if (task.isSuccessful) {
-                            Log.d("AuthViewModel", "Verification email sent to $newEmail")
 
-                            // Listen for email verification and update Firestore
-                            FirebaseAuth.getInstance().addAuthStateListener { auth ->
-                                val user = auth.currentUser
-                                if (user != null && user.isEmailVerified) {
-                                    FirebaseFirestore.getInstance().collection("Users").document(user.uid)
-                                        .update("email", user.email!!)
-                                        .addOnSuccessListener {
-                                            _authState.value = AuthState.Authenticated
-                                            Log.d("Firestore", "Email updated successfully.")
-                                        }
-                                        .addOnFailureListener { e ->
-                                            _authState.value = AuthState.Error(e.message ?: "Unknown error")
-                                            Log.w("Firestore", "Error updating email", e)
-                                        }
-                                }
-                            }
+                            signOut()
+                            Log.i("login", "verification email sent and user logged out") //*****
+
                         } else {
                             _authState.value = AuthState.Error(task.exception?.message ?: "Unknown error")
-                            Log.w("AuthViewModel", "Error sending verification email", task.exception)
+                            Log.e("login", "verification email not sent") //*****
                         }
                     }
                 } else {
                     _authState.value = AuthState.Error("Re-authentication failed")
-                    Log.w("AuthViewModel", "Re-authentication failed")
+                    Log.e("login", "re-authentication failed") //*****
                 }
             }
         } else {
             _authState.value = AuthState.Error("User not authenticated")
+            Log.e("login", "user not authenticated") //*****
         }
     }
+
+
+
     //====================================================================================--> Miscellaneous
     fun signOut() {
         auth.signOut()
@@ -541,4 +583,5 @@ sealed class AuthState{
     object Unauthenticated : AuthState()
     object Loading : AuthState()
     data class Error(val message : String) : AuthState()
+    data class Info(val message : String) : AuthState()
 }

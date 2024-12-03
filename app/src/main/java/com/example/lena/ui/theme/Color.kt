@@ -12,6 +12,8 @@ val LightBackground = Color(0xFFF9F9F9)
 val LightSurface = Color(0xFFFFFFFF)
 val LightOnBackground = Color(0xFF2C2C2E)
 val LightOutline = Color(0xFFA1A1A1)
+val LightSuccess = Color(0xFF4CAF50)
+val LightOnSuccess = Color(0xFFFFFFFF)
 
 val DarkPrimary = Color(0xFF3C3C3C) // Slightly lighter grey for differentiation
 val DarkOnPrimary = Color(0xFFFFFFFF)
@@ -22,6 +24,8 @@ val DarkSurface = Color(0xFF1E1E1E) // Dark grey for surface elements
 val DarkOnBackground = Color(0xFFE5E5E5) // Light grey for text on dark background
 val DarkOnSurface = Color(0xFFE5E5E5) // Light grey text/icons on surface elements
 val DarkOutline = Color(0xFF3C3C3C) // Neutral grey for outline
+val DarkSuccess = Color(0xFF388E3C) // Green for success
+val DarkOnSuccess = Color(0xFFFFFFFF) // White text for success
 
 // Shades of Gray
 val Gray100 = Color(0xFFF5F5F5)
