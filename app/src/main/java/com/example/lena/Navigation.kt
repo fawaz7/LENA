@@ -34,13 +34,13 @@ fun LenaAppNavigation(viewModel: AuthViewModel){
             MainMenu(navController, authViewModel = viewModel)
         }
         composable(Screens.SignUpScreen.name){
-            SignUpScreen(navController =  navController, viewModel = viewModel)
+            SignUpScreen(navController =  navController, authViewModel = viewModel)
         }
         composable(Screens.ForgotPasswordScreen.name){
-            ForgotPasswordScreen(navController = navController, viewModel = viewModel)
+            ForgotPasswordScreen(navController = navController, authViewModel = viewModel)
         }
         composable(Screens.MyAccountScreen.name){
-            MyAccountScreen(navController = navController, viewModel = viewModel)
+            MyAccountScreen(navController = navController, authViewModel = viewModel)
         }
     }
 }

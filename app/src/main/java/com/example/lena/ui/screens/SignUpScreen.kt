@@ -1,5 +1,6 @@
 package com.example.lena.ui.screens
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
@@ -75,14 +76,16 @@ import com.example.lena.ui.rememberImeState
 import com.example.lena.ui.theme.Gray800
 import com.example.lena.ui.theme.Gray900
 import com.example.lena.ui.theme.LENATheme
+import com.example.lena.viewModels.AuthEvent
 import com.example.lena.viewModels.AuthState
 import com.example.lena.viewModels.AuthViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignUpScreen(
     navController: NavController,
-    viewModel: AuthViewModel ,
+    authViewModel: AuthViewModel,
     modifier: Modifier = Modifier
 ) {
     var isRePasswordFocused by remember { mutableStateOf(false) }
@@ -94,9 +97,11 @@ fun SignUpScreen(
     val passwordFocusRequester = FocusRequester()
     val repeatPasswordFocusRequester = FocusRequester()
     val keyboardController = LocalSoftwareKeyboardController.current
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by authViewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val authState = viewModel.authState.observeAsState()
+    val authState = authViewModel.authState.observeAsState()
+
+
 
 
     val textSize by animateFloatAsState(targetValue = if (isImeVisible) 32f else 28f, animationSpec = tween(durationMillis = 300),
@@ -115,16 +120,31 @@ fun SignUpScreen(
             is AuthState.Authenticated -> {
                 navController.navigate(Screens.MainMenu.name)
             }
-            is AuthState.Error -> {
-                Toast.makeText(context, (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
-            }
             else -> Unit
 
         }
     }
 
     LaunchedEffect(Unit) {
-        viewModel.resetUiState()
+        launch {
+            authViewModel.authEvent.collect { event ->
+                Log.d("ToastDebug", "Collected event: $event")
+                when (event) {
+                    is AuthEvent.Info -> {
+                        Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                        authViewModel.resetToastFlag()
+                    }
+                    is AuthEvent.Error -> {
+                        Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                        authViewModel.resetToastFlag()
+                    }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        authViewModel.resetUiState()
     }
 
 
@@ -199,14 +219,14 @@ fun SignUpScreen(
                     ) {
                         OutlinedTextField(
                             value = uiState.firstName,
-                            onValueChange = { viewModel.onFirstNameChange(it) },
+                            onValueChange = { authViewModel.onFirstNameChange(it) },
                             label = { Text(text = "First Name", fontSize = 12.sp) },
                             modifier = Modifier
                                 .weight(1f)
                                 .focusRequester(firstNameFocusRequester)
                                 .onFocusChanged { focusState ->
                                     if (!focusState.isFocused) {
-                                        viewModel.onFirstNameFocusChanged(focusState.isFocused)
+                                        authViewModel.onFirstNameFocusChanged(focusState.isFocused)
                                     }
                                 },
                             keyboardOptions = KeyboardOptions.Default.copy(
@@ -233,14 +253,14 @@ fun SignUpScreen(
                         )
                         OutlinedTextField(
                             value = uiState.lastName,
-                            onValueChange = { viewModel.onLastNameChange(it) },
+                            onValueChange = { authViewModel.onLastNameChange(it) },
                             label = { Text(text = "Last Name", fontSize = 12.sp) },
                             modifier = Modifier
                                 .weight(1f)
                                 .focusRequester(lastNameFocusRequester)
                                 .onFocusChanged { focusState ->
                                     if (!focusState.isFocused) {
-                                        viewModel.onLastNameFocusChanged(focusState.isFocused)
+                                        authViewModel.onLastNameFocusChanged(focusState.isFocused)
                                     }
                                 },
                             keyboardOptions = KeyboardOptions.Default.copy(
@@ -271,13 +291,13 @@ fun SignUpScreen(
 //=============================================================================-----> Email field
                     OutlinedTextField(
                         value = uiState.signUpEmail,
-                        onValueChange = { viewModel.onSignUpEmailChange(it) },
+                        onValueChange = { authViewModel.onSignUpEmailChange(it) },
                         label = { Text(text = "Email") },
                         modifier = Modifier
                             .focusRequester(emailFocusRequester)
                             .onFocusChanged { focusState ->
                                 if (!focusState.isFocused) {
-                                    viewModel.onSignUpEmailFocusChanged(focusState.isFocused)
+                                    authViewModel.onSignUpEmailFocusChanged(focusState.isFocused)
                                 }
                             },
                         trailingIcon = { Icon(imageVector = Icons.Default.Email, contentDescription = "Email Icon") },
@@ -302,15 +322,15 @@ fun SignUpScreen(
 //=============================================================================-----> Password field
                     OutlinedTextField(
                         value = uiState.password,
-                        onValueChange = { viewModel.onSignUpPasswordChange(it) },
+                        onValueChange = { authViewModel.onSignUpPasswordChange(it) },
                         label = { Text(text = "Password") },
                         modifier = Modifier
                             .focusRequester(passwordFocusRequester)
                             .onFocusChanged { focusState ->
-                                viewModel.onPasswordFocusChanged(focusState.isFocused)
+                                authViewModel.onPasswordFocusChanged(focusState.isFocused)
                             },
                         trailingIcon = {
-                            IconButton(onClick = { viewModel.togglePasswordVisibility() }) {
+                            IconButton(onClick = { authViewModel.togglePasswordVisibility() }) {
                                 Icon(
                                     imageVector = if (uiState.isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
                                     contentDescription = if (uiState.isPasswordVisible) "Hide Password" else "Show Password"
@@ -342,18 +362,18 @@ fun SignUpScreen(
 //=============================================================================-----> Re-enter Password field
                     OutlinedTextField(
                         value = uiState.rePassword,
-                        onValueChange = { viewModel.onRePasswordChange(it) },
+                        onValueChange = { authViewModel.onRePasswordChange(it) },
                         label = { Text(text = "Repeat password") },
                         modifier = Modifier
                             .focusRequester(repeatPasswordFocusRequester)
                             .onFocusChanged { focusState ->
                                 isRePasswordFocused = focusState.isFocused
                                 if (!focusState.isFocused) {
-                                    viewModel.onRePasswordChange(uiState.rePassword)
+                                    authViewModel.onRePasswordChange(uiState.rePassword)
                                 }
                             },
                         trailingIcon = {
-                            IconButton(onClick = { viewModel.toggleRePasswordVisibility() }) {
+                            IconButton(onClick = { authViewModel.toggleRePasswordVisibility() }) {
                                 Icon(
                                     imageVector = if (uiState.isRePasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
                                     contentDescription = if (uiState.isRePasswordVisible) "Hide Password" else "Show Password"
@@ -368,7 +388,7 @@ fun SignUpScreen(
                         ),
                         keyboardActions = KeyboardActions(onDone = {
                             if (uiState.isSignUpFormValid) {
-                                viewModel.signUp()
+                                authViewModel.signUp()
                                 keyboardController?.hide()
                             } else {
                                 keyboardController?.hide()
@@ -394,7 +414,7 @@ fun SignUpScreen(
 //=============================================================================-----> Finish the Sign Up
             Button(
                 onClick = {
-                    viewModel.signUp()
+                    authViewModel.signUp()
                     keyboardController?.hide()
                 },
                 enabled = uiState.isSignUpFormValid,
@@ -427,7 +447,7 @@ fun SignUpScreen(
                     modifier = Modifier.clickable(
                         onClick = {
                             navController.navigate(Screens.LoginScreen.name)
-                            viewModel.resetUiState()},
+                            authViewModel.resetUiState()},
                     )
                 )
             }
@@ -439,6 +459,6 @@ fun SignUpScreen(
 @Composable
 fun SignUpScreenPreview() {
     LENATheme(darkTheme = true) {
-        SignUpScreen(navController = rememberNavController(), viewModel = viewModel())
+        SignUpScreen(navController = rememberNavController(), authViewModel = viewModel())
     }
 }

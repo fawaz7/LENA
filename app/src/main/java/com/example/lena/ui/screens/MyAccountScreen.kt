@@ -1,9 +1,9 @@
 package com.example.lena.ui.screens
 
 import android.app.Activity
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -12,20 +12,15 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -35,11 +30,7 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
 
 
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -47,10 +38,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -60,7 +49,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -82,12 +70,12 @@ import com.example.lena.R
 import com.example.lena.Screens
 import com.example.lena.ui.rememberImeState
 import com.example.lena.ui.theme.DarkSuccess
-import com.example.lena.ui.theme.Gray800
-import com.example.lena.ui.theme.Gray900
 import com.example.lena.ui.theme.LENATheme
 import com.example.lena.ui.theme.LightSuccess
+import com.example.lena.viewModels.AuthEvent
 import com.example.lena.viewModels.AuthState
 import com.example.lena.viewModels.AuthViewModel
+import kotlinx.coroutines.launch
 
 
 enum class SelectedOption {
@@ -95,31 +83,31 @@ enum class SelectedOption {
 }
 
 @Composable
-fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
+fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) {
 
     val context = LocalContext.current
     val activity = context as? Activity
     val focusManager = LocalFocusManager.current
     val isImeVisible by rememberImeState()
-    val GreetingVisibleState = remember { mutableStateOf(false) }
+    val greetingVisibleState = remember { mutableStateOf(false) }
     val selectedOption = remember { mutableStateOf<SelectedOption?>(null) }
     val changeEmailDialog = remember { mutableStateOf(false) }
     val signOutDialog = remember { mutableStateOf(false) }
     val deleteAccountDialog = remember { mutableStateOf(false) }
     val confirmDeleteDialog = remember { mutableStateOf(false) }
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by authViewModel.uiState.collectAsState()
 
 
 
     LaunchedEffect(Unit) {
-        GreetingVisibleState.value = true
+        greetingVisibleState.value = true
     }
 
-    LaunchedEffect(viewModel.authState.value) {
-        when (viewModel.authState.value) {
+    LaunchedEffect(authViewModel.authState.value) {
+        when (authViewModel.authState.value) {
             is AuthState.Authenticated -> {
-                viewModel.fetchUserInfo()
-                viewModel.fetchVerificationStatus()
+                authViewModel.fetchUserInfo()
+                authViewModel.fetchVerificationStatus()
             }
             is AuthState.Unauthenticated -> {
                 navController.navigate(Screens.LoginScreen.name) {
@@ -127,6 +115,24 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
                 }
             }
             else -> Unit
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        launch {
+            authViewModel.authEvent.collect { event ->
+                Log.d("ToastDebug", "Collected event: $event")
+                when (event) {
+                    is AuthEvent.Info -> {
+                        Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                        authViewModel.resetToastFlag()
+                    }
+                    is AuthEvent.Error -> {
+                        Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                        authViewModel.resetToastFlag()
+                    }
+                }
+            }
         }
     }
 
@@ -154,7 +160,7 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
 
             // Greetings Section
             AnimatedVisibility(
-                visible = GreetingVisibleState.value,
+                visible = greetingVisibleState.value,
                 enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                 exit = fadeOut()
             ) {
@@ -236,11 +242,11 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
                             )
                             OutlinedTextField(
                                 value = uiState.authorizedNewEmailAddress,
-                                onValueChange = { viewModel.onAuthorizedNewEmailChange(it) },
+                                onValueChange = { authViewModel.onAuthorizedNewEmailChange(it) },
                                 label = { Text(text = "New Email Address") },
                                 modifier = Modifier.onFocusChanged { focusState ->
                                     if (!focusState.isFocused) {
-                                        viewModel.onAuthorizedNewEmailFocusChanged(focusState.isFocused)
+                                        authViewModel.onAuthorizedNewEmailFocusChanged(focusState.isFocused)
                                     }
                                 },
                                 singleLine = true,
@@ -250,7 +256,7 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
                                     if (!uiState.authorizedNewEmailError && uiState.authorizedNewEmailAddress.isNotBlank()) {
                                         changeEmailDialog.value = true
                                     } else {
-                                        viewModel.onAuthorizedNewEmailFocusChanged(false) // Show error message
+                                        authViewModel.onAuthorizedNewEmailFocusChanged(false) // Show error message
                                     }
                                 }),
                                 isError = uiState.authorizedNewEmailError && uiState.authorizedNewEmailAddress.isNotBlank(),
@@ -272,20 +278,20 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
                                     if (!uiState.authorizedNewEmailError && uiState.authorizedNewEmailAddress.isNotBlank()) {
                                         changeEmailDialog.value = true
                                     } else {
-                                        viewModel.onAuthorizedNewEmailFocusChanged(false) // Show error message
+                                        authViewModel.onAuthorizedNewEmailFocusChanged(false) // Show error message
                                     }
                                 },
                                 isEnabled = !uiState.authorizedNewEmailError && uiState.authorizedNewEmailAddress.isNotBlank(),
                             )
 
-                            while (changeEmailDialog.value){
+                            if (changeEmailDialog.value){
 
                                 InputConfirmationDialog(
                                     title = "Change Email?",
                                     message = "Please Type your Password again to confirm changing your current email to ${uiState.authorizedNewEmailAddress}\n\n" +
                                             "Please note that you will be signed out to confirm the changes",
                                     onConfirm = { password ->
-                                        viewModel.changeEmail(uiState.authorizedNewEmailAddress, password)
+                                        authViewModel.changeEmail(uiState.authorizedNewEmailAddress, password)
                                         { success ->
                                             if (success){
                                                 changeEmailDialog.value = false
@@ -299,7 +305,7 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
                                     type = "password",
                                     passwordError = uiState.changeEmailPasswordConfirmationError,
                                     keyboardOnDone = { password ->
-                                        viewModel.changeEmail(uiState.authorizedNewEmailAddress, password)
+                                        authViewModel.changeEmail(uiState.authorizedNewEmailAddress, password)
                                         { success ->
                                             if (success){
                                                 changeEmailDialog.value = false
@@ -381,7 +387,7 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
                                     title = "Sign Out",
                                     message = "Are you sure you want to sign out?",
                                     onConfirm = {
-                                        viewModel.signOut()
+                                        authViewModel.signOut()
                                         signOutDialog.value = false
                                     },
                                     onDismiss = { signOutDialog.value = false },

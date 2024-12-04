@@ -7,15 +7,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 
@@ -65,16 +69,21 @@ sealed class AuthEvent {
     data class Info(val message : String) : AuthEvent()
 }
 
+enum class toastType {
+    Info, Error
+}
+
 class AuthViewModel : ViewModel() {
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val fStore: FirebaseFirestore = FirebaseFirestore.getInstance()
     private var lastVerificationEmailSentTime: Long = 0
+    private var toastShown = false
 
     private val _authState = MutableLiveData<AuthState>()
     val authState: LiveData<AuthState> = _authState
 
-    private val _authEvent = MutableSharedFlow<AuthEvent>()
+    private val _authEvent = MutableSharedFlow<AuthEvent>(replay = 1)
     val authEvent: SharedFlow<AuthEvent> = _authEvent
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -97,66 +106,59 @@ class AuthViewModel : ViewModel() {
 
     //====================================================================================--> Login
     fun login(email: String, password: String) {
-        val email = email.trim().lowercase()
-        validateEmail(email) { isValid, errorMessage ->
+        val formattedEmail = email.trim().lowercase()
+        var isValidationFailed = false
+
+        validateEmail(formattedEmail) { isValid, _ ->
             if (!isValid) {
-                _authEvent.value = AuthEvent.Error(errorMessage)
-                Log.e("login", "this email is not valid") //********
+                isValidationFailed = true
             }
+        }
 
-            if (password.isBlank()) {
-                _authEvent.value = AuthEvent.Error("Password cannot be empty")
-                Log.e("login", "this password is empty") //********
+        if (password.isBlank()) {
+            isValidationFailed = true
+        }
 
-            }
+        if (isValidationFailed) return
 
-            _authState.value = AuthState.Loading
-            auth.signInWithEmailAndPassword(email, password).addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val user = auth.currentUser
-                    if (user != null) {
-                        if (user.isEmailVerified) {
+        _authState.value = AuthState.Loading
+        auth.signInWithEmailAndPassword(formattedEmail, password).addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val user = auth.currentUser
+                if (user != null) {
+                    if (user.isEmailVerified) {
 
-                            Log.i("login", "this email is verified") //********
-
-
-                            val userId = user.uid
-                            val userRef = fStore.collection("Users").document(userId)
-                            userRef.get().addOnSuccessListener { document ->
-                                if (document != null) {
-                                    val storedEmail = document.getString("email") ?: ""
-                                    if (storedEmail != user.email) {
-                                        userRef.update("email", user.email!!)
-
-                                        Log.i("login", "this email is not the same and updated successfully") //********
-
-                                    } else {
-                                        Log.i("login", "this email is the same")} //********
-
-                                    _authState.value = AuthState.Authenticated
+                        val userId = user.uid
+                        val userRef = fStore.collection("Users").document(userId)
+                        userRef.get().addOnSuccessListener { document ->
+                            if (document != null) {
+                                val storedEmail = document.getString("email") ?: ""
+                                if (storedEmail != user.email) {
+                                    userRef.update("email", user.email!!)
+                                    //Log.i("AuthViewModel", "Email updated successfully")
                                 } else {
-                                    _authEvent.value = AuthEvent.Error("User not found in Firestore")
-                                    Log.e("login", "this email is not found in firestore") //********
+                                    //Log.i("AuthViewModel", "Email matches Firestore record")
                                 }
-                            }.addOnFailureListener { e ->
-                                _authEvent.value = AuthEvent.Error(e.message ?: "Unknown error")
+                                _authState.value = AuthState.Authenticated
+                            } else {
+                                toastMessage(toastType.Error, "Something is wrong")
                             }
-                        } else {
-                            _authEvent.value = AuthEvent.Error("Email is not verified")
-                            Log.i("login", "this email is not verified") //********
+                        }.addOnFailureListener { e ->
+                            toastMessage(toastType.Error, e.message ?: ("Something is wrong"))
                         }
-                    } else {
-                        _authEvent.value = AuthEvent.Error("User not found")
-                        Log.e("login", "this email is not found") //********
 
+                    } else {
+                        toastMessage(toastType.Error, "Please verify your email address")
+                        _authState.value = AuthState.Authenticated
                     }
-                } else {
-                    _authEvent.value = AuthEvent.Error(task.exception?.message ?: "Unknown error")
-                    _authState.value = AuthState.Unauthenticated
                 }
+            } else {
+                toastMessage(toastType.Error, task.exception?.message ?: ("Invalid request"))
+                _authState.value = AuthState.Unauthenticated
             }
         }
     }
+
 
     fun onEmailChange(newEmail: String) {
         _uiState.update {
@@ -210,12 +212,12 @@ class AuthViewModel : ViewModel() {
     //====================================================================================--> Sign Up
     fun signUp() {
         if (!uiState.value.isSignUpFormValid) {
-            _authEvent.value = AuthEvent.Error("All fields must be filled and valid")
+            toastMessage(toastType.Error, "Please check all field then try again")
             return
         }
         checkIfEmailExistsInFirestore(_uiState.value.signUpEmail) { exists ->
             if (exists) {
-                _authEvent.value = AuthEvent.Error("Email already exists")
+                toastMessage(toastType.Error, "Email already exists")
                 return@checkIfEmailExistsInFirestore
             }
 
@@ -232,16 +234,19 @@ class AuthViewModel : ViewModel() {
                     documentReference.set(user).addOnSuccessListener {
                         auth.currentUser?.sendEmailVerification()?.addOnCompleteListener { verificationTask ->
                             if (verificationTask.isSuccessful) {
+                                /*TODO Verification email time*/
+                                toastMessage(toastType.Info, "Email Verification sent")
                                 _authState.value = AuthState.Authenticated
                             } else {
-                                _authEvent.value = AuthEvent.Error(verificationTask.exception?.message ?: "Unknown error")
+                                _authEvent.tryEmit(AuthEvent.Error(verificationTask.exception?.message ?: "Unknown error"))
                             }
                         }
                     }.addOnFailureListener { e ->
-                        _authEvent.value = AuthEvent.Error(e.message ?: "Unknown error")
+                        toastMessage(toastType.Error, e.message ?: "Email verification failed")
                     }
                 } else {
-                    _authEvent.value = AuthEvent.Error(task.exception?.message ?: "Unknown error")
+                   toastMessage(toastType.Error, task.exception?.message ?: "Unknown error while creating account")
+                    _authState.value = AuthState.Unauthenticated
                 }
             }
         }
@@ -422,7 +427,7 @@ class AuthViewModel : ViewModel() {
                     _uiState.update { it.copy(forgotPasswordSuccess = true) }
                     clearAuthState()
                 } else {
-                    _authEvent.value = AuthEvent.Error(task.exception?.message ?: "Unknown error")
+                    //_authEvent.value = AuthEvent.Error(task.exception?.message ?: "Unknown error")
                     _uiState.update { it.copy(forgotPasswordSuccess = false) }
                     clearAuthState()
                 }
@@ -566,13 +571,14 @@ class AuthViewModel : ViewModel() {
                 if (success) {
                     currentUser.verifyBeforeUpdateEmail(newEmail).addOnCompleteListener { task ->
                         if (task.isSuccessful) {
-
-                            _authEvent.value = AuthEvent.Info("Please verify you email address before signing in to apply changes")
+                            /*TODO Verification email time*/
+                            toastMessage(toastType.Info, "Email verification sent")
                             callback(true)
                             signOut()
 
                         } else {
-                            _authEvent.value = AuthEvent.Error(task.exception?.message ?: "Unknown error occured")
+
+                            toastMessage(toastType.Error, task.exception?.message ?: "Email change failed")
                         }
                     }
                 } else {
@@ -581,7 +587,7 @@ class AuthViewModel : ViewModel() {
                 }
             }
         } else {
-            _authEvent.value = AuthEvent.Error("User not authenticated")
+            toastMessage(toastType.Error, "User not authenticated")
         }
     }
 
@@ -603,14 +609,27 @@ class AuthViewModel : ViewModel() {
         _authState.value = AuthState.Unauthenticated
     }
 
-    fun setInfoMessage(message: String) {
-        _uiState.update { it.copy(infoMessage = message) }
-    }
+    private fun toastMessage(eventType: toastType, message: String) {
+        viewModelScope.launch {
+            withContext(Dispatchers.Main) {
 
-    fun setErrorMessage(message: String) {
-        _uiState.update { it.copy(errorMessage = message) }
+                if (!toastShown) {
+                    when (eventType) {
+                        toastType.Info ->  {
+                            _authEvent.tryEmit(AuthEvent.Info(message))
+                        }
+                        toastType.Error -> {
+                            _authEvent.tryEmit(AuthEvent.Error(message))
+                        }
+                        else -> Log.e("AuthViewModel", "Unknown event type: $eventType")
+                    }
+                } else toastShown = true
+            }
+        }
     }
-
+    fun resetToastFlag() {
+        toastShown = false  // Reset flag when you want to show toast again
+    }
 }
 
 

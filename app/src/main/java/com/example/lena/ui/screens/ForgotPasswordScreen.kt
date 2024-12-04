@@ -1,5 +1,6 @@
 package com.example.lena.ui.screens
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
@@ -69,14 +70,16 @@ import com.example.lena.ui.rememberImeState
 import com.example.lena.ui.theme.Gray800
 import com.example.lena.ui.theme.Gray900
 import com.example.lena.ui.theme.LENATheme
+import com.example.lena.viewModels.AuthEvent
 import com.example.lena.viewModels.AuthState
 import com.example.lena.viewModels.AuthViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ForgotPasswordScreen(
     navController: NavController,
-    viewModel: AuthViewModel ,
+    authViewModel: AuthViewModel,
     modifier: Modifier = Modifier
 
 ){
@@ -85,9 +88,9 @@ fun ForgotPasswordScreen(
     val focusManager = LocalFocusManager.current
     val resetEmailFocusRequester = FocusRequester()
 
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by authViewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val authState = viewModel.authState.observeAsState()
+    val authState = authViewModel.authState.observeAsState()
 
     val textSize by animateFloatAsState(targetValue = if (isImeVisible) 32f else 28f, animationSpec = tween(durationMillis = 300),
         label = "TextSize Animation")
@@ -95,6 +98,24 @@ fun ForgotPasswordScreen(
         label = "subTextSize Animation")
     val firstSpacerHeight by animateDpAsState(targetValue = if (isImeVisible) 8.dp else 24.dp, animationSpec = tween(durationMillis = 300),
         label = "firstSpacerHeight Animation")
+
+    LaunchedEffect(Unit) {
+        launch {
+            authViewModel.authEvent.collect { event ->
+                Log.d("ToastDebug", "Collected event: $event")
+                when (event) {
+                    is AuthEvent.Info -> {
+                        Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                        authViewModel.resetToastFlag()
+                    }
+                    is AuthEvent.Error -> {
+                        Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                        authViewModel.resetToastFlag()
+                    }
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -164,25 +185,25 @@ fun ForgotPasswordScreen(
             ) {
                 OutlinedTextField(
                     value = uiState.forgotPasswordEmail,
-                    onValueChange = { viewModel.onForgotPasswordEmailChange(it) },
+                    onValueChange = { authViewModel.onForgotPasswordEmailChange(it) },
                     label = { Text(text = "Email") },
                     modifier = Modifier
                         .focusRequester(resetEmailFocusRequester)
                         .onFocusChanged { focusState ->
                             if (!focusState.isFocused) {
-                                viewModel.onForgotPasswordEmailFocusChanged(focusState.isFocused)
+                                authViewModel.onForgotPasswordEmailFocusChanged(focusState.isFocused)
                             }
                         },
                     trailingIcon = { Icon(imageVector = Icons.Default.Email, contentDescription = "Email Icon") },
                     keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done, keyboardType = KeyboardType.Email),
                     keyboardActions = KeyboardActions(onDone = {
-                        viewModel.onForgotPasswordEmailFocusChanged(false)
+                        authViewModel.onForgotPasswordEmailFocusChanged(false)
                         if (uiState.forgotPasswordEmail.isBlank()) {
-                            viewModel.setForgotEmailError("Email is required")
-                        } else if (!viewModel.validateEmail(uiState.forgotPasswordEmail)) {
-                            viewModel.setForgotEmailError("Invalid email address")
+                            authViewModel.setForgotEmailError("Email is required")
+                        } else if (!authViewModel.validateEmail(uiState.forgotPasswordEmail)) {
+                            authViewModel.setForgotEmailError("Invalid email address")
                         } else {
-                            viewModel.resetPassword(uiState.forgotPasswordEmail)
+                            authViewModel.resetPassword(uiState.forgotPasswordEmail)
                             keyboardController?.hide()
                         }
                     }),
@@ -205,13 +226,13 @@ fun ForgotPasswordScreen(
                 //=======================================================================================---> End of Text Field
                 Button(
                     onClick = {
-                        viewModel.onForgotPasswordEmailFocusChanged(false)
+                        authViewModel.onForgotPasswordEmailFocusChanged(false)
                         if (uiState.forgotPasswordEmail.isBlank()) {
-                            viewModel.setForgotEmailError("Email is required")
-                        } else if (!viewModel.validateEmail(uiState.forgotPasswordEmail)) {
-                            viewModel.setForgotEmailError("Invalid email address")
+                            authViewModel.setForgotEmailError("Email is required")
+                        } else if (!authViewModel.validateEmail(uiState.forgotPasswordEmail)) {
+                            authViewModel.setForgotEmailError("Invalid email address")
                         } else {
-                            viewModel.resetPassword(uiState.forgotPasswordEmail)
+                            authViewModel.resetPassword(uiState.forgotPasswordEmail)
                             keyboardController?.hide()
                         }
                     },
@@ -243,12 +264,8 @@ fun ForgotPasswordScreen(
                                 navController.navigate("LoginScreen") {
                                     popUpTo("ForgotPasswordScreen") { inclusive = true }
                                 }
-                                viewModel.resetUiState()
+                                authViewModel.resetUiState()
                             }
-                        }
-                        is AuthState.Error -> {
-                            Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
-                            viewModel.clearAuthState()
                         }
                         else -> {}
                     }

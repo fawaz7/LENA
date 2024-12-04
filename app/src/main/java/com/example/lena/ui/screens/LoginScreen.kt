@@ -1,5 +1,6 @@
 package com.example.lena.ui.screens
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
@@ -76,8 +77,10 @@ import com.example.lena.ui.rememberImeState
 import com.example.lena.ui.theme.Gray800
 import com.example.lena.ui.theme.Gray900
 import com.example.lena.ui.theme.LENATheme
+import com.example.lena.viewModels.AuthEvent
 import com.example.lena.viewModels.AuthState
 import com.example.lena.viewModels.AuthViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -117,9 +120,6 @@ fun LoginScreen(
                     popUpTo(Screens.LoginScreen.name) { inclusive = true }
                 }
             }
-            is AuthState.Error -> {
-                Toast.makeText(context, (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
-            }
             else -> Unit
         }
     }
@@ -127,6 +127,25 @@ fun LoginScreen(
     LaunchedEffect(Unit) {
         authViewModel.resetUiState()
     }
+
+    LaunchedEffect(Unit) {
+        launch {
+            authViewModel.authEvent.collect { event ->
+                Log.d("ToastDebug", "Collected event: $event")
+                when (event) {
+                    is AuthEvent.Info -> {
+                        Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                        authViewModel.resetToastFlag()
+                    }
+                    is AuthEvent.Error -> {
+                        Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                        authViewModel.resetToastFlag()
+                    }
+                }
+            }
+        }
+    }
+
 
     Scaffold(
         topBar = {
@@ -267,13 +286,7 @@ fun LoginScreen(
             )
             //====================================--> Invalid Credentials Text
 
-            if (authState.value is AuthState.Error) {
-                Text(
-                    text = "Incorrect Credentials",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
+            /*TODO Create a supprting text for invalid credentials*/
 
             //====================================--> Login Button
             Spacer(Modifier.height(16.dp).fillMaxWidth())
