@@ -3,6 +3,8 @@ package com.example.lena.ui.screens
 import android.app.Activity
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,11 +33,13 @@ import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.ripple.rememberRipple
+
+
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +50,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -54,6 +60,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -109,31 +116,27 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
     }
 
     LaunchedEffect(viewModel.authState.value) {
-        when (val state = viewModel.authState.value) {
+        when (viewModel.authState.value) {
             is AuthState.Authenticated -> {
                 viewModel.fetchUserInfo()
                 viewModel.fetchVerificationStatus()
             }
-            is AuthState.Error -> {
-                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
-            }
-            is AuthState.Loading -> {
+            is AuthState.Unauthenticated -> {
+                navController.navigate(Screens.LoginScreen.name) {
+                    popUpTo(Screens.MainMenu.name) { inclusive = true }
+                }
             }
             else -> Unit
         }
     }
 
+    val imeSpacer1 by animateDpAsState(targetValue = if (isImeVisible) 0.dp else 64.dp, animationSpec = tween(durationMillis = 300),
+        label = "ImeSpacer1 Animation")
+    val imeSpacer2 by animateDpAsState(targetValue = if (isImeVisible) 0.dp else 64.dp, animationSpec = tween(durationMillis = 300),
+        label = "ImeSpacer1 Animation")
 
-//    LaunchedEffect(authState.value) {
-//        when(authState.value) {
-//            is AuthState.Unauthenticated -> {
-//                navController.navigate(Screens.LoginScreen.name) {
-//                    popUpTo(Screens.MainMenu.name) { inclusive = true }
-//                }
-//            }
-//            else -> Unit
-//        }
-//    }
+
+
 
     Scaffold(
         topBar = { MyAccountTopBar(modifier = Modifier, navController = navController) }
@@ -147,7 +150,7 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
                 },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(modifier = Modifier.height(64.dp).fillMaxWidth())
+            Spacer(modifier = Modifier.height(imeSpacer1).fillMaxWidth())
 
             // Greetings Section
             AnimatedVisibility(
@@ -174,8 +177,8 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(64.dp).fillMaxWidth())
+            FadedHorizontalDivider(topPadding = 16.dp, bottomPadding = 8.dp)
+            Spacer(modifier = Modifier.height(imeSpacer2).fillMaxWidth())
 
             // Options Section
             Box(
@@ -184,11 +187,11 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
                 Column(
                     Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
                         text = "Change Login Email",
-                        fontWeight = FontWeight.Light,
+                        fontWeight = if (selectedOption.value == SelectedOption.ChangeEmail) FontWeight.W500 else FontWeight.Light,
                         fontSize = 20.sp,
                         modifier = Modifier.clickable {
                             selectedOption.value =
@@ -200,13 +203,18 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
                             enter = slideInVertically(initialOffsetY = { -it/2 }, ) + fadeIn(animationSpec = tween(durationMillis = 150)),
                             exit = slideOutVertically(targetOffsetY = { -it/2 }, ) + fadeOut(animationSpec = tween(durationMillis = 150))
                         ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+
+                        ) {
                             OutlinedTextField(
                                 value = uiState.authorizedUserEmail,
                                 onValueChange = {},
                                 enabled = false,
                                 singleLine = true,
-                                label = { Text(text = "Current Email Address") },
+                                isError = !uiState.isAuthorizedUserVerified,
+                                label = { Text(text = if (uiState.isAuthorizedUserVerified) "Current Email Address" else "This email address is not verified") },
                                 leadingIcon = {
                                     if (uiState.isAuthorizedUserVerified){
                                         Icon(imageVector = Icons.Default.CheckCircle, contentDescription = "Checked mark", tint = if (isSystemInDarkTheme()) DarkSuccess else LightSuccess)
@@ -216,16 +224,13 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
                                     if (uiState.isAuthorizedUserVerified){
                                     Text(text = "This email address is verified", color = if (isSystemInDarkTheme()) DarkSuccess else LightSuccess)
                                     } else {
-                                        Column(){
-                                            Text(text = "This email address is not verified. ", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                                             Text(
                                                 text = "resend verification email.",
                                                 color = MaterialTheme.colorScheme.error,
                                                 style = MaterialTheme.typography.bodySmall.merge(TextStyle(textDecoration = TextDecoration.Underline)),
                                                 modifier = Modifier
                                                     .clickable(
-                                                    ) { /*TODO Resend verification email*/ },                                                )
-                                        }
+                                                    ) { /*TODO verification*/ },                                                )
                                     }
                                 },
                             )
@@ -242,7 +247,7 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
                                 trailingIcon = { Icon(imageVector = Icons.Default.Email, contentDescription = "Email Icon") },
                                 keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done, keyboardType = KeyboardType.Email),
                                 keyboardActions = KeyboardActions(onDone = {
-                                    if (!uiState.authorizedNewEmailError && uiState.authorizedNewEmailAddress.isNotBlank() && android.util.Patterns.EMAIL_ADDRESS.matcher(uiState.authorizedNewEmailAddress).matches()) {
+                                    if (!uiState.authorizedNewEmailError && uiState.authorizedNewEmailAddress.isNotBlank()) {
                                         changeEmailDialog.value = true
                                     } else {
                                         viewModel.onAuthorizedNewEmailFocusChanged(false) // Show error message
@@ -273,21 +278,34 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
                                 isEnabled = !uiState.authorizedNewEmailError && uiState.authorizedNewEmailAddress.isNotBlank(),
                             )
 
-                            if (changeEmailDialog.value){
+                            while (changeEmailDialog.value){
+
                                 InputConfirmationDialog(
                                     title = "Change Email?",
-                                    message = "Please Type your Password again to confirm changing your current email to ${uiState.authorizedNewEmailAddress}\n" +
+                                    message = "Please Type your Password again to confirm changing your current email to ${uiState.authorizedNewEmailAddress}\n\n" +
                                             "Please note that you will be signed out to confirm the changes",
                                     onConfirm = { password ->
-                                        viewModel.changeEmail(uiState.authorizedNewEmailAddress,password)
-                                        changeEmailDialog.value = false
-                                        navController.navigate(Screens.MainMenu.name)
+                                        viewModel.changeEmail(uiState.authorizedNewEmailAddress, password)
+                                        { success ->
+                                            if (success){
+                                                changeEmailDialog.value = false
+                                            }
+                                        }
                                     },
                                     onDismiss = { changeEmailDialog.value = false },
                                     confirmationText = "Yes, Change Email",
                                     dismissText = "Cancel",
                                     inputLabel = "Confirm Password",
                                     type = "password",
+                                    passwordError = uiState.changeEmailPasswordConfirmationError,
+                                    keyboardOnDone = { password ->
+                                        viewModel.changeEmail(uiState.authorizedNewEmailAddress, password)
+                                        { success ->
+                                            if (success){
+                                                changeEmailDialog.value = false
+                                            }
+                                        }
+                                    },
                                 )
                             }
                         }
@@ -402,7 +420,8 @@ fun MyAccountScreen(navController: NavController, viewModel: AuthViewModel) {
                                     confirmationText = "Confirm",
                                     onConfirm = {},
                                     dismissText = "Cancel",
-                                    inputLabel = "Password"
+                                    inputLabel = "Password",
+                                    keyboardOnDone = {}
                                 )
                             }
                         }
