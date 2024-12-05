@@ -8,6 +8,10 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.NavController
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
+import com.example.lena.Screens
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentReference
@@ -65,6 +69,7 @@ sealed class AuthState{
 }
 
 sealed class AuthEvent {
+    object None : AuthEvent()
     data class Error(val message : String) : AuthEvent()
     data class Info(val message : String) : AuthEvent()
 }
@@ -89,6 +94,9 @@ class AuthViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState
 
+    companion object {
+        private const val VERIFICATION_EMAIL_COOLDOWN = 2 * 60 * 1000 // 2 minutes in milliseconds
+    }
 
     init {
         checkAuthStatus()
@@ -593,10 +601,13 @@ class AuthViewModel : ViewModel() {
 
 
 
+
+
     //====================================================================================--> Miscellaneous
-    fun signOut() {
+    fun signOut(navController: NavController? = null) {
         auth.signOut()
         resetUiState()
+        navController?.navigate(Screens.LoginScreen.name)
         _authState.value = AuthState.Unauthenticated
 
     }
@@ -623,12 +634,44 @@ class AuthViewModel : ViewModel() {
                         }
                         else -> Log.e("AuthViewModel", "Unknown event type: $eventType")
                     }
+                    _authEvent.emit(AuthEvent.None)
                 } else toastShown = true
             }
         }
     }
+
     fun resetToastFlag() {
         toastShown = false  // Reset flag when you want to show toast again
+    }
+
+    fun sendVerificationEmail() {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastVerificationEmailSentTime < VERIFICATION_EMAIL_COOLDOWN) {
+            toastMessage(toastType.Error, "Please wait before requesting another verification email.")
+            return
+        }
+
+        val user = auth.currentUser
+        user?.let {
+            it.reload().addOnCompleteListener { reloadTask ->
+                if (reloadTask.isSuccessful) {
+                    if (it.isEmailVerified) {
+                        toastMessage(toastType.Info, "Your email is already verified.")
+                    } else {
+                        it.sendEmailVerification().addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                lastVerificationEmailSentTime = currentTime
+                                toastMessage(toastType.Info, "Verification email sent successfully.")
+                            } else {
+                                toastMessage(toastType.Error, task.exception?.message ?: "Failed to send verification email.")
+                            }
+                        }
+                    }
+                } else {
+                    toastMessage(toastType.Error, reloadTask.exception?.message ?: "Failed to check email verification status.")
+                }
+            }
+        }
     }
 }
 

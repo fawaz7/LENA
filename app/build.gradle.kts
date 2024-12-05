@@ -74,6 +74,7 @@ dependencies {
     implementation("com.google.ai.client.generativeai:generativeai:$ai_version")
     implementation("androidx.navigation:navigation-compose:$nav_version")
     implementation ("androidx.compose.material:material-icons-extended:$compose_version")
+    implementation ("androidx.core:core-splashscreen:1.0.1")
 }
 
 

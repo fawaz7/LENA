@@ -81,6 +81,8 @@ import com.example.lena.viewModels.AuthState
 import com.example.lena.viewModels.AuthViewModel
 import kotlinx.coroutines.launch
 
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignUpScreen(
@@ -115,10 +117,15 @@ fun SignUpScreen(
     val firstSpacerHeight by animateDpAsState(targetValue = if (isImeVisible) 20.dp else 80.dp, animationSpec = tween(durationMillis = 300),
         label = "firstSpacerHeight Animation")
 
+    LaunchedEffect(Unit) {
+        authViewModel.resetToastFlag()
+        authViewModel.resetUiState()
+    }
+
     LaunchedEffect(authState.value) {
         when (authState.value) {
             is AuthState.Authenticated -> {
-                navController.navigate(Screens.MainMenu.name)
+                navController.navigate(Screens.ChatMenu.name)
             }
             else -> Unit
 
@@ -138,6 +145,7 @@ fun SignUpScreen(
                         Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                         authViewModel.resetToastFlag()
                     }
+                    AuthEvent.None -> {}
                 }
             }
         }

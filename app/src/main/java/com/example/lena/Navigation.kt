@@ -8,14 +8,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.lena.ui.screens.ForgotPasswordScreen
 import com.example.lena.ui.screens.LoginScreen
-import com.example.lena.ui.screens.MainMenu
+import com.example.lena.ui.screens.ChatMenu
 import com.example.lena.ui.screens.MyAccountScreen
 import com.example.lena.ui.screens.SignUpScreen
 import com.example.lena.viewModels.AuthViewModel
 
 enum class Screens{
     LoginScreen,
-    MainMenu,
+    ChatMenu,
     SignUpScreen,
     ForgotPasswordScreen,
     MyAccountScreen,
@@ -30,8 +30,8 @@ fun LenaAppNavigation(viewModel: AuthViewModel){
         composable(Screens.LoginScreen.name) {
             LoginScreen(navController, authViewModel = viewModel, modifier = Modifier)
         }
-        composable(Screens.MainMenu.name) {
-            MainMenu(navController, authViewModel = viewModel)
+        composable(Screens.ChatMenu.name) {
+            ChatMenu(navController, authViewModel = viewModel)
         }
         composable(Screens.SignUpScreen.name){
             SignUpScreen(navController =  navController, authViewModel = viewModel)

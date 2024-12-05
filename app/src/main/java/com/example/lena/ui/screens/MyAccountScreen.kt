@@ -97,7 +97,10 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
     val confirmDeleteDialog = remember { mutableStateOf(false) }
     val uiState by authViewModel.uiState.collectAsState()
 
-
+    LaunchedEffect(Unit) {
+        authViewModel.resetToastFlag()
+        authViewModel.resetUiState()
+    }
 
     LaunchedEffect(Unit) {
         greetingVisibleState.value = true
@@ -111,7 +114,7 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
             }
             is AuthState.Unauthenticated -> {
                 navController.navigate(Screens.LoginScreen.name) {
-                    popUpTo(Screens.MainMenu.name) { inclusive = true }
+                    popUpTo(Screens.ChatMenu.name) { inclusive = true }
                 }
             }
             else -> Unit
@@ -131,6 +134,7 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
                         Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                         authViewModel.resetToastFlag()
                     }
+                    AuthEvent.None -> {}
                 }
             }
         }
@@ -236,7 +240,7 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
                                                 style = MaterialTheme.typography.bodySmall.merge(TextStyle(textDecoration = TextDecoration.Underline)),
                                                 modifier = Modifier
                                                     .clickable(
-                                                    ) { /*TODO verification*/ },                                                )
+                                                    ) { authViewModel.sendVerificationEmail() },                                                )
                                     }
                                 },
                             )
@@ -387,8 +391,8 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
                                     title = "Sign Out",
                                     message = "Are you sure you want to sign out?",
                                     onConfirm = {
-                                        authViewModel.signOut()
                                         signOutDialog.value = false
+                                        authViewModel.signOut(navController)
                                     },
                                     onDismiss = { signOutDialog.value = false },
                                     confirmationText = "Sign Out",

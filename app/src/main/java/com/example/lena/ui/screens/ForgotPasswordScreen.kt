@@ -100,6 +100,11 @@ fun ForgotPasswordScreen(
         label = "firstSpacerHeight Animation")
 
     LaunchedEffect(Unit) {
+        authViewModel.resetToastFlag()
+        authViewModel.resetUiState()
+    }
+
+    LaunchedEffect(Unit) {
         launch {
             authViewModel.authEvent.collect { event ->
                 Log.d("ToastDebug", "Collected event: $event")
@@ -112,6 +117,7 @@ fun ForgotPasswordScreen(
                         Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                         authViewModel.resetToastFlag()
                     }
+                    AuthEvent.None -> {}
                 }
             }
         }

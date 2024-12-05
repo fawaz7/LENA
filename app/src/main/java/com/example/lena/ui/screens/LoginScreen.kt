@@ -113,19 +113,20 @@ fun LoginScreen(
         label = "subSpacerHeight Animation"
     )
 
+    LaunchedEffect(Unit) {
+        authViewModel.resetToastFlag()
+        authViewModel.resetUiState()
+    }
+
     LaunchedEffect(authState.value) {
         when (authState.value) {
             is AuthState.Authenticated -> {
-                navController.navigate(Screens.MainMenu.name) {
+                navController.navigate(Screens.ChatMenu.name) {
                     popUpTo(Screens.LoginScreen.name) { inclusive = true }
                 }
             }
             else -> Unit
         }
-    }
-
-    LaunchedEffect(Unit) {
-        authViewModel.resetUiState()
     }
 
     LaunchedEffect(Unit) {
@@ -141,6 +142,7 @@ fun LoginScreen(
                         Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                         authViewModel.resetToastFlag()
                     }
+                    AuthEvent.None -> {}
                 }
             }
         }

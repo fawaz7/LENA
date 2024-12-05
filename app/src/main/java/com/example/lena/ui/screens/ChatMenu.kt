@@ -2,7 +2,6 @@ package com.example.lena.ui.screens
 
 
 import android.app.Activity
-import android.view.View
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -13,7 +12,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -70,10 +68,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.example.lena.Data.LenaConstants.greetingStrings
 import com.example.lena.Models.MessageModel
 import com.example.lena.R
@@ -82,13 +78,12 @@ import com.example.lena.ui.theme.LENATheme
 import com.example.lena.viewModels.AuthState
 import com.example.lena.viewModels.AuthViewModel
 import com.example.lena.viewModels.ChatViewModel
-import com.google.rpc.context.AttributeContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 
 @Composable
-fun MainMenu(navController: NavController, authViewModel: AuthViewModel) {
+fun ChatMenu(navController: NavController, authViewModel: AuthViewModel) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val chatViewModel: ChatViewModel = viewModel()
@@ -103,7 +98,7 @@ fun MainMenu(navController: NavController, authViewModel: AuthViewModel) {
         when(authState.value) {
             is AuthState.Unauthenticated -> {
                 navController.navigate(Screens.LoginScreen.name) {
-                    popUpTo(Screens.MainMenu.name) { inclusive = true }
+                    popUpTo(Screens.ChatMenu.name) { inclusive = true }
                 }
             }
             else -> Unit
@@ -222,7 +217,7 @@ fun MainMenuTopBar(modifier: Modifier = Modifier, viewModel: AuthViewModel, navC
                         message = "Are you sure you want to logout?",
                         onConfirm = {
                             confirmSignOutDialog.value = false
-                            viewModel.signOut()
+                            viewModel.signOut(navController)
                         },
                         onDismiss = {
                             confirmSignOutDialog.value = false
