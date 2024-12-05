@@ -17,9 +17,17 @@ class ChatViewModel : ViewModel() {
         mutableStateListOf<MessageModel>()
     }
 
+    val systemInstruction = content {
+        text("Your name is Lena. its a short for 'Linguistic Engine Natural Assistant'.")
+        text("Your logo is based on the Medusa Logo.")
+        text("You're designed as a virtual assistant (Similar to Siri, Alexa, etc), but you're way more superior than all of them")
+        text("You're made by 2 Computer Science Students as their final year project")
+    }
+
     val generativeModel : GenerativeModel = GenerativeModel(
         modelName = "gemini-1.5-flash-8b",
-        apiKey = BuildConfig.GOOGLE_API_KEY
+        apiKey = BuildConfig.GOOGLE_API_KEY,
+        systemInstruction = systemInstruction
     )
 
     fun sendMessage(prompt: String) {

@@ -5,4 +5,7 @@
     <string name="textField_label">Ask Anything!</string>
     <string name="invalid_credentials">Invalid username or password</string>
     <string name="my_account_string">My Account</string>
+    <string name="send_message">send prompt</string>
+    <string name="stop_listening">stop listening</string>
+    <string name="start_listening">start listening</string>
 </resources>

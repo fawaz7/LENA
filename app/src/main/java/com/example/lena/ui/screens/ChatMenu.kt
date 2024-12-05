@@ -1,9 +1,12 @@
 package com.example.lena.ui.screens
 
 
+import android.Manifest
 import android.app.Activity
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -31,7 +34,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MicNone
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,6 +49,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -74,10 +78,13 @@ import com.example.lena.Data.LenaConstants.greetingStrings
 import com.example.lena.Models.MessageModel
 import com.example.lena.R
 import com.example.lena.Screens
+import com.example.lena.ui.theme.DarkSuccess
 import com.example.lena.ui.theme.LENATheme
+import com.example.lena.ui.theme.LightSuccess
 import com.example.lena.viewModels.AuthState
 import com.example.lena.viewModels.AuthViewModel
 import com.example.lena.viewModels.ChatViewModel
+import com.example.lena.viewModels.SpeechRecognitionViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -313,14 +320,66 @@ fun MessageRow(messageModel: MessageModel) {
 
 
 @Composable
-fun MessageInput(onMessageSend: (String) -> Unit, modifier: Modifier = Modifier) {
+fun MessageInput(
+    onMessageSend: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    speechRecognitionViewModel: SpeechRecognitionViewModel = viewModel()
+) {
     var message by remember { mutableStateOf("") }
+
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
+
+    val isListening by speechRecognitionViewModel.isListening.collectAsState()
+    val spokenText by speechRecognitionViewModel.spokenText.observeAsState()
+    val needsPermission by speechRecognitionViewModel.needsPermission.collectAsState()
+    val error by speechRecognitionViewModel.error.observeAsState()
+
+    // Permission launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            speechRecognitionViewModel.checkAndInitializeSpeechRecognizer()
+            speechRecognitionViewModel.handleMicrophoneClick()
+        } else {
+            // Handle permission denied case
+            Toast.makeText(context, "Permission denied", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Handle permission request
+    LaunchedEffect(needsPermission) {
+        if (needsPermission) {
+            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            // Reset the flag inside the ViewModel after handling
+            speechRecognitionViewModel.onPermissionHandled()
+        }
+    }
+
+    // Handle spoken text updates
+    LaunchedEffect(spokenText) {
+        spokenText?.let {
+            message = it
+            // Optionally, send the message automatically
+            // onMessageSend(message.trim())
+            // message = ""
+        }
+    }
+
+    // Handle errors
+    LaunchedEffect(error) {
+        error?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            speechRecognitionViewModel.clearError()
+        }
+    }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 8.dp, top = 8.dp, end = 8.dp),
+            .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         OutlinedTextField(
@@ -328,37 +387,52 @@ fun MessageInput(onMessageSend: (String) -> Unit, modifier: Modifier = Modifier)
             onValueChange = { message = it },
             label = { Text(stringResource(R.string.textField_label)) },
             modifier = Modifier
-                .weight(0.8f)
+                .weight(1f)
                 .imePadding(),
             maxLines = 4,
-            singleLine = true,
             keyboardOptions = KeyboardOptions.Default.copy(
-                imeAction = ImeAction.Done
+                imeAction = if (message.isNotBlank()) ImeAction.Send else ImeAction.Default
             ),
             keyboardActions = KeyboardActions(
-                onDone = {
+                onSend = {
                     if (message.isNotBlank()) {
-                        onMessageSend(message.trimEnd(' '))
+                        onMessageSend(message.trim())
                         message = ""
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
                     }
                 }
             ),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                focusedBorderColor = MaterialTheme.colorScheme.onSurface,
+                focusedLabelColor = MaterialTheme.colorScheme.onSurface
             )
         )
-        IconButton(onClick = {
-            if (message.isNotBlank()) {
-                keyboardController?.hide()
-                onMessageSend(message.trimEnd(' '))
-                message = ""
-                focusManager.clearFocus()
+        IconButton(
+            onClick = {
+                if (message.isNotBlank()) {
+                    keyboardController?.hide()
+                    onMessageSend(message.trim())
+                    message = ""
+                    focusManager.clearFocus()
+                } else {
+                    speechRecognitionViewModel.handleMicrophoneClick()
+                }
             }
-        }) {
+        ) {
             Icon(
-                imageVector = if (message == "") Icons.Default.Mic else Icons.AutoMirrored.Filled.Send,
-                contentDescription = "Send message"
+                imageVector = when {
+                    message.isNotBlank() -> Icons.AutoMirrored.Filled.Send
+                    isListening -> Icons.Default.MicNone
+                    else -> Icons.Default.MicNone
+                },
+                contentDescription = when {
+                    message.isNotBlank() -> stringResource(R.string.send_message)
+                    isListening -> stringResource(R.string.stop_listening)
+                    else -> stringResource(R.string.start_listening)
+                },
+                tint = if (isListening) if (isSystemInDarkTheme()) {DarkSuccess} else {LightSuccess} else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(28.dp)
             )
         }
     }
