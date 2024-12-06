@@ -28,6 +28,8 @@ import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 
 
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -49,16 +51,21 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
@@ -89,11 +96,16 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
     val activity = context as? Activity
     val focusManager = LocalFocusManager.current
     val isImeVisible by rememberImeState()
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val passwordFocusRequester = remember { FocusRequester() }
+    val repeatPasswordFocusRequester = remember { FocusRequester() }
+    var isRePasswordFocused by remember { mutableStateOf(false) }
     val greetingVisibleState = remember { mutableStateOf(false) }
     val selectedOption = remember { mutableStateOf<SelectedOption?>(null) }
     val changeEmailDialog = remember { mutableStateOf(false) }
     val signOutDialog = remember { mutableStateOf(false) }
     val deleteAccountDialog = remember { mutableStateOf(false) }
+    val changePasswordDialog = remember { mutableStateOf(false) }
     val confirmDeleteDialog = remember { mutableStateOf(false) }
     val uiState by authViewModel.uiState.collectAsState()
 
@@ -348,26 +360,113 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
                                 singleLine = true,
                             )
                             OutlinedTextField(
-                                value = newPassword,
-                                onValueChange = { newPassword = it },
-                                label = { Text(text = "New password") },
-                                modifier = Modifier,
-                                singleLine = true,
+                                value = uiState.password,
+                                onValueChange = { authViewModel.onPasswordChange(it, Screens.MyAccountScreen) },
+                                label = { Text(text = "Password") },
+                                modifier = Modifier
+                                    .focusRequester(passwordFocusRequester)
+                                    .onFocusChanged { focusState ->
+                                        authViewModel.onPasswordFocusChanged(focusState.isFocused, Screens.MyAccountScreen)
+                                    },
+                                trailingIcon = {
+                                    IconButton(onClick = { authViewModel.togglePasswordVisibility() }) {
+                                        Icon(
+                                            imageVector = if (uiState.isPasswordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                            contentDescription = if (uiState.isPasswordVisible) "Hide Password" else "Show Password"
+                                        )
+                                    }
+                                },
+                                visualTransformation = if (uiState.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                keyboardOptions = KeyboardOptions.Default.copy(
+                                    imeAction = ImeAction.Next,
+                                    keyboardType = KeyboardType.Password,
+                                    autoCorrectEnabled = false
+                                ),
+                                keyboardActions = KeyboardActions(onNext = { repeatPasswordFocusRequester.requestFocus() }),
+                                isError = uiState.passwordError,
+                                supportingText = {
+                                    if (uiState.passwordError) {
+                                        Text(
+                                            text = uiState.signUpPasswordErrorMessage,
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             )
+//=============================================================================-----> Re-enter Password field
                             OutlinedTextField(
-                                value = confirmPassword,
-                                onValueChange = { confirmPassword = it },
-                                label = { Text(text = "Confirm new password") },
-                                modifier = Modifier,
-                                singleLine = true,
+                                value = uiState.rePassword,
+                                onValueChange = { authViewModel.onRePasswordChange(it, Screens.MyAccountScreen) },
+                                label = { Text(text = "Repeat password") },
+                                modifier = Modifier
+                                    .focusRequester(repeatPasswordFocusRequester)
+                                    .onFocusChanged { focusState ->
+                                        isRePasswordFocused = focusState.isFocused
+                                        if (!focusState.isFocused) {
+                                            authViewModel.onRePasswordChange(uiState.rePassword, Screens.MyAccountScreen)
+                                        }
+                                    },
+                                trailingIcon = {
+                                    IconButton(onClick = { authViewModel.toggleRePasswordVisibility() }) {
+                                        Icon(
+                                            imageVector = if (uiState.isRePasswordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                            contentDescription = if (uiState.isRePasswordVisible) "Hide Password" else "Show Password"
+                                        )
+                                    }
+                                },
+                                visualTransformation = if (uiState.isRePasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                keyboardOptions = KeyboardOptions.Default.copy(
+                                    imeAction = if (uiState.isSignUpFormValid) ImeAction.Send else ImeAction.Done,
+                                    keyboardType = KeyboardType.Password,
+                                    autoCorrectEnabled = false
+                                ),
+                                keyboardActions = KeyboardActions(onDone = {
+                                    if (uiState.isSignUpFormValid) {
+                                        changePasswordDialog.value = true
+                                        keyboardController?.hide()
+                                    } else {
+                                        keyboardController?.hide()
+                                    }
+                                }),
+                                isError = uiState.repeatPasswordError,
+                                supportingText = {
+                                    if (uiState.repeatPasswordError) {
+                                        Text(
+                                            text = "Passwords do not match",
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             )
                             SubmitButton(
                                 text = "Submit",
-                                onClick = { },
-                                isEnabled = true,
+                                onClick = { changePasswordDialog.value = true },
+                                isEnabled = uiState.isPasswordFieldsValid,
                             )
                         }
                     }
+
+
+                            if (changePasswordDialog.value){
+                                ConfirmationDialog(
+                                    title = "Change Password",
+                                    message = "Are you sure you want to change your password?",
+                                    onConfirm = { /*TODO Change password function */ },
+                                    onDismiss = { changePasswordDialog.value = false },
+                                    confirmationText = "Yes, Change Password",
+                                    dismissText = "Cancel"
+                                )
+                            }
                     Box(
                         Modifier.fillMaxSize()
                     ) {
@@ -441,7 +540,6 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
         }
     }
 }
-
 
 
 

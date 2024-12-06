@@ -2,15 +2,11 @@ package com.example.lena.viewModels
 
 import android.util.Log
 import android.util.Patterns
-import android.widget.Toast
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
 import com.example.lena.Screens
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
@@ -44,6 +40,7 @@ data class AuthUiState(
     val rePassword: String = "",
     val isRePasswordVisible: Boolean = false,
     val repeatPasswordError: Boolean = false,
+    val isPasswordFieldsValid: Boolean = false,
     val successfulSignUp: Boolean = false,
     val signUpPasswordErrorMessage: String = "",
     val firstNameErrorMessage: String = "",
@@ -349,7 +346,7 @@ class AuthViewModel : ViewModel() {
         return Patterns.EMAIL_ADDRESS.matcher(email).matches()
     }
     //====================================================================--> Password Handling
-    fun onSignUpPasswordChange(newPassword: String) {
+    fun onPasswordChange(newPassword: String, page: Screens) {
         _uiState.update {
             it.copy(
                 password = newPassword,
@@ -357,16 +354,24 @@ class AuthViewModel : ViewModel() {
                 repeatPasswordError = it.rePassword.isNotEmpty() && it.rePassword != newPassword
             )
         }
-        validateSignUpForm()
+        when (page) {
+            Screens.SignUpScreen -> validateSignUpForm()
+            Screens.MyAccountScreen -> validatePasswordFields()
+            else -> {}
+        }
     }
 
-    fun onPasswordFocusChanged(focused: Boolean) {
+    fun onPasswordFocusChanged(focused: Boolean, page : Screens) {
         if (!focused) {
             val (isValid, errorMessage) = validatePassword(_uiState.value.password)
             _uiState.update {
                 it.copy(passwordError = !isValid && it.password.isNotBlank(), signUpPasswordErrorMessage = errorMessage)
             }
-            validateSignUpForm()
+            when (page) {
+                Screens.SignUpScreen -> validateSignUpForm()
+                Screens.MyAccountScreen -> validatePasswordFields()
+                else -> {}
+            }
         } else {
             _uiState.update {
                 it.copy(passwordError = false, signUpPasswordErrorMessage = "")
@@ -384,14 +389,18 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    fun onRePasswordChange(newRePassword: String) {
+    fun onRePasswordChange(newRePassword: String, page: Screens) {
         _uiState.update {
             it.copy(
                 rePassword = newRePassword,
                 repeatPasswordError = newRePassword.isNotEmpty() && newRePassword != _uiState.value.password
             )
         }
-        validateSignUpForm()
+        when (page) {
+            Screens.SignUpScreen -> validateSignUpForm()
+            Screens.MyAccountScreen -> validatePasswordFields()
+            else -> {}
+        }
     }
 
     fun toggleRePasswordVisibility() {
@@ -409,14 +418,22 @@ class AuthViewModel : ViewModel() {
                         it.lastName.isNotBlank() &&
                         !it.lastNameError &&
                         it.signUpEmail.isNotBlank() &&
-                        !it.signUpEmailError &&
-                        it.password.isNotBlank() &&
-                        !it.passwordError &&
-                        it.rePassword.isNotBlank() &&
-                        !it.repeatPasswordError &&
-                        it.password == it.rePassword
+                        !it.signUpEmailError && !it.isPasswordFieldsValid
             )
         }
+    }
+
+    internal fun validatePasswordFields() {
+         _uiState.update {
+             it.copy(
+                 isPasswordFieldsValid =
+                        it.password.isNotBlank() &&
+                         !it.passwordError &&
+                         it.rePassword.isNotBlank() &&
+                         !it.repeatPasswordError &&
+                         it.password == it.rePassword
+             )
+         }
     }
     //************************************************************************************
     //====================================================================================--> Forgot Password
@@ -598,7 +615,11 @@ class AuthViewModel : ViewModel() {
             toastMessage(toastType.Error, "User not authenticated")
         }
     }
+    //====================================================================================--> Change Password
 
+
+
+    //====================================================================================-->
 
 
 

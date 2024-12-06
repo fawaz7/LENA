@@ -330,17 +330,17 @@ fun SignUpScreen(
 //=============================================================================-----> Password field
                     OutlinedTextField(
                         value = uiState.password,
-                        onValueChange = { authViewModel.onSignUpPasswordChange(it) },
+                        onValueChange = { authViewModel.onPasswordChange(it, Screens.SignUpScreen) },
                         label = { Text(text = "Password") },
                         modifier = Modifier
                             .focusRequester(passwordFocusRequester)
                             .onFocusChanged { focusState ->
-                                authViewModel.onPasswordFocusChanged(focusState.isFocused)
+                                authViewModel.onPasswordFocusChanged(focusState.isFocused, Screens.SignUpScreen)
                             },
                         trailingIcon = {
                             IconButton(onClick = { authViewModel.togglePasswordVisibility() }) {
                                 Icon(
-                                    imageVector = if (uiState.isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                    imageVector = if (uiState.isPasswordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
                                     contentDescription = if (uiState.isPasswordVisible) "Hide Password" else "Show Password"
                                 )
                             }
@@ -370,20 +370,20 @@ fun SignUpScreen(
 //=============================================================================-----> Re-enter Password field
                     OutlinedTextField(
                         value = uiState.rePassword,
-                        onValueChange = { authViewModel.onRePasswordChange(it) },
+                        onValueChange = { authViewModel.onRePasswordChange(it, Screens.SignUpScreen) },
                         label = { Text(text = "Repeat password") },
                         modifier = Modifier
                             .focusRequester(repeatPasswordFocusRequester)
                             .onFocusChanged { focusState ->
                                 isRePasswordFocused = focusState.isFocused
                                 if (!focusState.isFocused) {
-                                    authViewModel.onRePasswordChange(uiState.rePassword)
+                                    authViewModel.onRePasswordChange(uiState.rePassword, Screens.SignUpScreen)
                                 }
                             },
                         trailingIcon = {
                             IconButton(onClick = { authViewModel.toggleRePasswordVisibility() }) {
                                 Icon(
-                                    imageVector = if (uiState.isRePasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                    imageVector = if (uiState.isRePasswordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
                                     contentDescription = if (uiState.isRePasswordVisible) "Hide Password" else "Show Password"
                                 )
                             }
