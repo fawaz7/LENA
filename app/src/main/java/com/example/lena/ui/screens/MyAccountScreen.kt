@@ -97,6 +97,7 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
     val focusManager = LocalFocusManager.current
     val isImeVisible by rememberImeState()
     val keyboardController = LocalSoftwareKeyboardController.current
+    val oldPasswordFocusRequester = remember { FocusRequester() }
     val passwordFocusRequester = remember { FocusRequester() }
     val repeatPasswordFocusRequester = remember { FocusRequester() }
     var isRePasswordFocused by remember { mutableStateOf(false) }
@@ -108,6 +109,17 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
     val changePasswordDialog = remember { mutableStateOf(false) }
     val confirmDeleteDialog = remember { mutableStateOf(false) }
     val uiState by authViewModel.uiState.collectAsState()
+
+    fun isDialogsOff(): Boolean{
+        if (
+            changeEmailDialog.value == false &&
+            signOutDialog.value == false &&
+            deleteAccountDialog.value == false &&
+            changePasswordDialog.value == false &&
+            confirmDeleteDialog.value == false
+        ) {return true}
+        else return false
+    }
 
     LaunchedEffect(Unit) {
         authViewModel.resetToastFlag()
@@ -152,9 +164,9 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
         }
     }
 
-    val imeSpacer1 by animateDpAsState(targetValue = if (isImeVisible) 0.dp else 64.dp, animationSpec = tween(durationMillis = 300),
+    val imeSpacer1 by animateDpAsState(targetValue = if (isImeVisible && isDialogsOff()) 0.dp else 64.dp, animationSpec = tween(durationMillis = 300),
         label = "ImeSpacer1 Animation")
-    val imeSpacer2 by animateDpAsState(targetValue = if (isImeVisible) 0.dp else 64.dp, animationSpec = tween(durationMillis = 300),
+    val imeSpacer2 by animateDpAsState(targetValue = if (isImeVisible && isDialogsOff()) 0.dp else 64.dp, animationSpec = tween(durationMillis = 300),
         label = "ImeSpacer1 Animation")
 
 
@@ -305,7 +317,7 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
                                 InputConfirmationDialog(
                                     title = "Change Email?",
                                     message = "Please Type your Password again to confirm changing your current email to ${uiState.authorizedNewEmailAddress}\n\n" +
-                                            "Please note that you will be signed out to confirm the changes",
+                                            "Please note that you will be signed out to confirm the changes.\n",
                                     onConfirm = { password ->
                                         authViewModel.changeEmail(uiState.authorizedNewEmailAddress, password)
                                         { success ->
@@ -313,7 +325,7 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
                                                 changeEmailDialog.value = false
                                             }
                                         }
-                                    },
+                                    }, /*TODO*/
                                     onDismiss = { changeEmailDialog.value = false },
                                     confirmationText = "Yes, Change Email",
                                     dismissText = "Cancel",
@@ -328,6 +340,7 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
                                             }
                                         }
                                     },
+
                                 )
                             }
                         }
@@ -348,17 +361,38 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
                         exit = slideOutVertically(targetOffsetY = { -it/2 }) + fadeOut()
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            var password by remember { mutableStateOf("") }
-                            var newPassword by remember { mutableStateOf("") }
-                            var confirmPassword by remember { mutableStateOf("") }
+                            var currentPassword by remember { mutableStateOf("") }
 
                             OutlinedTextField(
-                                value = password,
-                                onValueChange = { password = it },
+                                value = currentPassword,
+                                onValueChange = { currentPassword = it },
                                 label = { Text(text = "Old password") },
-                                modifier = Modifier,
+                                modifier = Modifier.focusRequester(oldPasswordFocusRequester),
                                 singleLine = true,
-                            )
+                                trailingIcon = {
+                                    IconButton(onClick = { authViewModel.togglePasswordVisibility() }) {
+                                        Icon(
+                                            imageVector = if (uiState.isPasswordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                            contentDescription = if (uiState.isPasswordVisible) "Hide Password" else "Show Password"
+                                        )
+                                    }
+                                },
+                                visualTransformation = if (uiState.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                isError = uiState.isCurrentPasswordWrong && currentPassword.isNotBlank(),
+                                supportingText = {
+                                    if (uiState.isCurrentPasswordWrong && currentPassword.isNotBlank()) {
+                                        Text(
+                                            text = uiState.currentPasswordError,
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                )
                             OutlinedTextField(
                                 value = uiState.password,
                                 onValueChange = { authViewModel.onPasswordChange(it, Screens.MyAccountScreen) },
@@ -453,23 +487,38 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
                                 onClick = { changePasswordDialog.value = true },
                                 isEnabled = uiState.isPasswordFieldsValid,
                             )
-                        }
-                    }
-
 
                             if (changePasswordDialog.value){
                                 ConfirmationDialog(
                                     title = "Change Password",
-                                    message = "Are you sure you want to change your password?",
-                                    onConfirm = { /*TODO Change password function */ },
+                                    message = "Are you sure you want to change your password?\nPlease note that you'll be required to sign in again to apply changes.",
+                                    onConfirm = {
+                                        authViewModel.changePassword(
+                                            oldPassword = currentPassword, // This is your old password state
+                                            newPassword = uiState.password, // This is your new password state
+                                        ) { success ->
+                                            if (success) {
+                                                changePasswordDialog.value = false
+                                                // Password was changed successfully and user will be signed out
+                                            } else {
+                                                changePasswordDialog.value = false
+                                            }
+                                        }
+                                    },
                                     onDismiss = { changePasswordDialog.value = false },
                                     confirmationText = "Yes, Change Password",
-                                    dismissText = "Cancel"
+                                    dismissText = "Cancel",
                                 )
                             }
+                        }
+                    }
+
+
+
                     Box(
                         Modifier.fillMaxSize()
                     ) {
+                        var currentPassword by remember { mutableStateOf("") }
                         Column(
                             Modifier
                                 .fillMaxWidth()
@@ -508,29 +557,58 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
                                 }
                             )
                             if (deleteAccountDialog.value){
-                                ConfirmationDialog(
-                                    title = "Delete Account",
-                                    message = "Are you sure you want to delete your account?",
-                                    onConfirm = {
+
+
+
+                                InputConfirmationDialog(
+                                    type = "password",
+                                    title = "Confirm Account Deletion",
+                                    message = "Please type your password to confirm account deletion",
+                                    onDismiss = {
                                         deleteAccountDialog.value = false
-                                        confirmDeleteDialog.value = true
+                                        currentPassword = ""  // Reset password when dismissed
                                     },
-                                    onDismiss = { deleteAccountDialog.value = false },
-                                    confirmationText = "Yes, Delete my Account",
+                                    confirmationText = "Confirm",
+                                    onConfirm = { password ->
+                                        currentPassword = password  // Set the current password
+                                        authViewModel.reauthenticateUser(password) { success ->
+                                            if (success) {
+                                                deleteAccountDialog.value = false
+                                                confirmDeleteDialog.value = true
+                                            }
+                                        }
+                                    },
                                     dismissText = "Cancel",
-                                    Confirmcolor = MaterialTheme.colorScheme.error
+                                    inputLabel = "Password",
+                                    keyboardOnDone = { password ->
+                                        currentPassword = password  // Set the current password
+                                        authViewModel.reauthenticateUser(password) { success ->
+                                            if (success) {
+                                                deleteAccountDialog.value = false
+                                                confirmDeleteDialog.value = true
+                                            }
+                                        }
+                                    },
+                                    confirmColor = MaterialTheme.colorScheme.error,
+                                    passwordError = uiState.isCurrentPasswordWrong && currentPassword.isNotBlank()
                                 )
                             }
                             if (confirmDeleteDialog.value){
-                                InputConfirmationDialog(
-                                    title = "Confirm Account Deletion",
-                                    message = "Please type your password to confirm account deletion",
+                                ConfirmationDialog(
+                                    title = "Delete Account",
+                                    message = "Are you sure you want to delete your account?\nThis action can't be undone.",
+                                    onConfirm = {
+                                        authViewModel.deleteAccount(currentPassword) { success ->
+                                            if (success) {
+                                                confirmDeleteDialog.value = false
+                                                navController.navigate(Screens.LoginScreen.name)
+                                            }
+                                        }
+                                    },
                                     onDismiss = { confirmDeleteDialog.value = false },
-                                    confirmationText = "Confirm",
-                                    onConfirm = {},
+                                    confirmationText = "Yes, Delete my Account",
                                     dismissText = "Cancel",
-                                    inputLabel = "Password",
-                                    keyboardOnDone = {}
+                                    confirmColor = MaterialTheme.colorScheme.error,
                                 )
                             }
                         }

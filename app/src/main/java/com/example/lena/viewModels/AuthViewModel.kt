@@ -57,6 +57,8 @@ data class AuthUiState(
     val changeEmailPasswordConfirmationError: Boolean = false,
     val errorMessage: String = "",
     val infoMessage: String = "",
+    val isCurrentPasswordWrong: Boolean = false,
+    val currentPasswordError: String = "",
 )
 
 sealed class AuthState{
@@ -575,14 +577,29 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    private fun reauthenticateUser(password: String, onComplete: (Boolean) -> Unit) {
+    internal fun reauthenticateUser(password: String, onComplete: (Boolean) -> Unit) {
         val currentUser = FirebaseAuth.getInstance().currentUser
         if (currentUser != null) {
             val credential = EmailAuthProvider.getCredential(currentUser.email!!, password)
             currentUser.reauthenticate(credential).addOnCompleteListener { task ->
+                if (!task.isSuccessful) {
+                    _uiState.update { it.copy(
+                        isCurrentPasswordWrong = true,
+                        currentPasswordError = "Current password is incorrect"
+                    ) }
+                } else {
+                    _uiState.update { it.copy(
+                        isCurrentPasswordWrong = false,
+                        currentPasswordError = ""
+                    ) }
+                }
                 onComplete(task.isSuccessful)
             }
         } else {
+            _uiState.update { it.copy(
+                isCurrentPasswordWrong = true,
+                currentPasswordError = "User not authenticated"
+            ) }
             onComplete(false)
         }
     }
@@ -616,10 +633,87 @@ class AuthViewModel : ViewModel() {
         }
     }
     //====================================================================================--> Change Password
+    fun changePassword(oldPassword: String, newPassword: String, callback: (Boolean) -> Unit) {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            _authState.value = AuthState.Loading
+
+            // First re-authenticate the user with their old password
+            reauthenticateUser(oldPassword) { success ->
+                if (success) {
+                    // If re-authentication is successful, proceed with password change
+                    currentUser.updatePassword(newPassword).addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            toastMessage(toastType.Info, "Password updated successfully")
+                            callback(true)
+                            signOut() // Sign out user after password change for security
+                        } else {
+                            toastMessage(toastType.Error, task.exception?.message ?: "Password change failed")
+                            callback(false)
+                        }
+                    }
+                } else {
+                    callback(false)
+                    _uiState.update { it.copy(
+                        isCurrentPasswordWrong = true,
+                        currentPasswordError = "Current password is incorrect"
+                    ) }
+                }
+                _authState.value = AuthState.Authenticated
+            }
+        } else {
+            toastMessage(toastType.Error, "User not authenticated")
+            callback(false)
+        }
+    }
 
 
+    //====================================================================================--> Delete Account
+    fun deleteAccount(password: String, callback: (Boolean) -> Unit) {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            _authState.value = AuthState.Loading
 
-    //====================================================================================-->
+            // First re-authenticate the user
+            reauthenticateUser(password) { success ->
+                if (success) {
+                    // Delete Firestore data first
+                    val userRef = fStore.collection("Users").document(currentUser.uid)
+                    userRef.delete().addOnCompleteListener { firestoreTask ->
+                        if (firestoreTask.isSuccessful) {
+                            // After Firestore data is deleted, delete the Firebase Auth account
+                            currentUser.delete().addOnCompleteListener { authTask ->
+                                if (authTask.isSuccessful) {
+                                    toastMessage(toastType.Info, "Account deleted successfully")
+                                    resetUiState()
+                                    _authState.value = AuthState.Unauthenticated
+                                    callback(true)
+                                } else {
+                                    toastMessage(toastType.Error, authTask.exception?.message ?: "Failed to delete account")
+                                    _authState.value = AuthState.Authenticated
+                                    callback(false)
+                                }
+                            }
+                        } else {
+                            toastMessage(toastType.Error, firestoreTask.exception?.message ?: "Failed to delete user data")
+                            _authState.value = AuthState.Authenticated
+                            callback(false)
+                        }
+                    }
+                } else {
+                    _uiState.update { it.copy(
+                        isCurrentPasswordWrong = true,
+                        currentPasswordError = "Current password is incorrect"
+                    ) }
+                    _authState.value = AuthState.Authenticated
+                    callback(false)
+                }
+            }
+        } else {
+            toastMessage(toastType.Error, "User not authenticated")
+            callback(false)
+        }
+    }
 
 
 
@@ -628,7 +722,9 @@ class AuthViewModel : ViewModel() {
     fun signOut(navController: NavController? = null) {
         auth.signOut()
         resetUiState()
-        navController?.navigate(Screens.LoginScreen.name)
+        navController?.navigate(Screens.LoginScreen.name) {
+            popUpTo(Screens.ChatMenu.name) { inclusive = true }
+        }
         _authState.value = AuthState.Unauthenticated
 
     }
