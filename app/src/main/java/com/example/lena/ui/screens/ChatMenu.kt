@@ -35,6 +35,8 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.MicNone
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -89,6 +91,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 
+
+
+
 @Composable
 fun ChatMenu(navController: NavController, authViewModel: AuthViewModel) {
     val focusManager = LocalFocusManager.current
@@ -99,6 +104,10 @@ fun ChatMenu(navController: NavController, authViewModel: AuthViewModel) {
     val authState = authViewModel.authState.observeAsState()
     val context = LocalContext.current
     val activity = context as? Activity
+
+    //=============================================================--> Permission handling
+    var showPermissionPopup by remember { mutableStateOf(true) }
+    //================================================================
 
 
     LaunchedEffect(authState.value) {
@@ -137,31 +146,34 @@ fun ChatMenu(navController: NavController, authViewModel: AuthViewModel) {
                 .padding(innerPadding)
                 .imePadding()
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = 64.dp) // Reserve space for the input field
-                    .pointerInput(Unit) {
-                        detectTapGestures(onTap = {
-                            focusManager.clearFocus()
-                            keyboardController?.hide()
-                        })
-                    }
-            ) {
-                MessageList(
-                    messageList = chatViewModel.messageList,
-                    modifier = Modifier.weight(1f)
+            if (showPermissionPopup) {
+                PermissionPopup(onDismiss = { showPermissionPopup = false })
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 64.dp)
+                        .pointerInput(Unit) {
+                            detectTapGestures(onTap = {
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
+                            })
+                        }
+                ) {
+                    MessageList(
+                        messageList = chatViewModel.messageList,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                MessageInput(
+                    onMessageSend = { chatViewModel.sendMessage(it) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .imePadding()
                 )
             }
-
-            // Position the message input at the bottom
-            MessageInput(
-                onMessageSend = { chatViewModel.sendMessage(it) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .imePadding()
-            )
         }
     }
 }
@@ -214,7 +226,7 @@ fun MainMenuTopBar(modifier: Modifier = Modifier, viewModel: AuthViewModel, navC
                         onClick = {
                             optionsMenu = false
                             confirmSignOutDialog.value = true
-                             },
+                        },
                         text = { Text(text = "Logout", fontStyle = MaterialTheme.typography.bodyMedium.fontStyle)},
                     )
                 }
@@ -465,8 +477,44 @@ fun Greetings(){
     }
 }
 
+@Composable
+fun PermissionPopup(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val activity = context as? Activity
 
+    val permissions = listOf(
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.BLUETOOTH,
+        Manifest.permission.SET_ALARM,
+        Manifest.permission.WRITE_CALENDAR
+    )
 
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissionsResult ->
+        // Handle permission results here
+        if (permissionsResult.all { it.value }) {
+            Toast.makeText(context, "All permissions granted", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "Some permissions were denied", Toast.LENGTH_SHORT).show()
+        }
+        onDismiss()
+    }
+
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        confirmButton = {
+            Button(onClick = {
+                permissionLauncher.launch(permissions.toTypedArray())
+            }) {
+                Text("OK")
+            }
+        },
+        title = { Text("Permission Request") },
+        text = { Text("Please accept the following permissions.") },
+        dismissButton = null
+    )
+}
 
 @Preview()
 @Composable

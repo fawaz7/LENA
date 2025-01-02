@@ -24,6 +24,8 @@ android {
 
 
         buildConfigField("String", "GOOGLE_API_KEY", "\"${project.findProperty("GOOGLE_API_KEY")}\"")
+        buildConfigField("String", "WIT_AI_TOKEN", "\"${project.findProperty("WIT_AI_TOKEN")}\"")
+        buildConfigField("String", "OPEN_WEATHER_MAP_API_KEY", "\"${project.findProperty("OPEN_WEATHER_MAP_API_KEY")}\"")
 
 
     }
@@ -75,6 +77,12 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:$nav_version")
     implementation ("androidx.compose.material:material-icons-extended:$compose_version")
     implementation ("androidx.core:core-splashscreen:1.0.1")
+    implementation ("com.squareup.okhttp3:okhttp:4.11.0")
+    implementation ("com.google.code.gson:gson:2.10.1")
+    implementation ("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
+    implementation ("com.squareup.okhttp3:logging-interceptor:4.9.3")
+    implementation ("com.google.android.gms:play-services-location:21.3.0")
+    implementation ("com.google.accompanist:accompanist-permissions:0.24.13-rc")
 }
 
 
