@@ -19,36 +19,66 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.ComponentActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewModelScope
 import com.example.lena.BuildConfig
 import com.example.lena.Data.LenaConstants.thinkingStrings
 import com.example.lena.Models.MessageModel
 import com.example.lena.utils.WitAiClient
 import com.google.ai.client.generativeai.GenerativeModel
+import com.google.ai.client.generativeai.type.Content
 import com.google.ai.client.generativeai.type.content
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val authViewModel: AuthViewModel by lazy {
+        val factory = AuthViewModel.Factory(application)
+        ViewModelProvider(ViewModelStore(), factory)[AuthViewModel::class.java]
+    }
+
     val messageList by lazy {
         mutableStateListOf<MessageModel>()
     }
 
-    val systemInstruction = content {
-        text("Your name is Lena. its a short for 'Linguistic Engine Natural Assistant'.")
-        text("Your logo is based on the Medusa Logo.")
-        text("You're designed as a virtual assistant (Similar to Siri, Alexa, etc), but you're way more superior than all of them")
-        text("You're made by 2 Computer Science Students as their final year project")
+    private var systemInstruction: Content? = null
+
+    init {
+        // Collect the first name when it updates
+        viewModelScope.launch {
+            authViewModel.uiState.collect { state ->
+                val firstName = state.authorizedUserFirstName
+                if (firstName.isNotEmpty()) {
+                    updateSystemInstruction(firstName)
+                }
+            }
+        }
     }
 
-    val generativeModel : GenerativeModel = GenerativeModel(
-        modelName = "gemini-1.5-flash-8b",
-        apiKey = BuildConfig.GOOGLE_API_KEY,
-        systemInstruction = systemInstruction
-    )
+    private fun updateSystemInstruction(firstName: String) {
+        systemInstruction = content {
+            text("Your name is Lena. it's short for 'Linguistic Engine Natural Assistant'.")
+            text("Your logo is based on the Medusa Logo.")
+            text("You're designed as a virtual assistant (Similar to Siri, Alexa, etc)")
+            text("You're made by 2 Computer Science Students as their final year project in Al-Yarmouk university in Irbid, Jordan")
+            text("The user currently interacting with you is $firstName. Provide them with an engaging and helpful experience!")
+            text("Your primary users are likely to have Arabic names, and you're optimized to understand and interact effectively with both Arabic and English speakers.")
+        }
+
+        // Initialize the generative model with the updated system instruction
+        generativeModel = GenerativeModel(
+            modelName = "gemini-1.5-flash-8b",
+            apiKey = BuildConfig.GOOGLE_API_KEY,
+            systemInstruction = systemInstruction
+        )
+    }
+
+    lateinit var generativeModel: GenerativeModel
 
     private val witAiClient = WitAiClient(BuildConfig.WIT_AI_TOKEN)
     private val weatherViewModel = WeatherViewModel()
@@ -132,22 +162,30 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         when (action.lowercase()) {
             "on" -> {
                 if (wifiManager.wifiState != WifiManager.WIFI_STATE_ENABLED && wifiManager.wifiState != WifiManager.WIFI_STATE_ENABLING) {
-                    val intent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                    context.startActivity(intent)
                     messageList.add(MessageModel("Opening WiFi Settings to turn ON", "model"))
+                    viewModelScope.launch {
+                        delay(1000)  // 1 Second delay
+                        val intent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    }
+
                 } else {
                     messageList.add(MessageModel("WiFi is already ON", "model"))
                 }
             }
             "off" -> {
                 if (wifiManager.wifiState != WifiManager.WIFI_STATE_DISABLED && wifiManager.wifiState != WifiManager.WIFI_STATE_DISABLING) {
-                    val intent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                    context.startActivity(intent)
                     messageList.add(MessageModel("Opening WiFi Settings to turn OFF", "model"))
+                    viewModelScope.launch {
+                        delay(1000)  // 1 Second delay
+                        val intent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    }
+
                 } else {
                     messageList.add(MessageModel("WiFi is already OFF", "model"))
                 }
@@ -175,34 +213,43 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED
         ) {
-            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                data = Uri.fromParts("package", context.packageName, null)
-            }
-            context.startActivity(intent)
             messageList.add(MessageModel("Please grant Bluetooth permissions in the settings", "model"))
+            viewModelScope.launch {
+                delay(1000)  // 1 Second delay
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    data = Uri.fromParts("package", context.packageName, null)
+                }
+                context.startActivity(intent)
+            }
             return
         }
 
         when (action.lowercase()) {
             "on" -> {
                 if (!bluetoothAdapter.isEnabled) {
-                    val intent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                    context.startActivity(intent)
                     messageList.add(MessageModel("Requesting to turn Bluetooth ON", "model"))
+                    viewModelScope.launch {
+                        delay(1000)  // 1 Second delay
+                        val intent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    }
                 } else {
                     messageList.add(MessageModel("Bluetooth is already ON", "model"))
                 }
             }
             "off" -> {
                 if (bluetoothAdapter.isEnabled) {
-                    val intent = Intent(Settings.ACTION_BLUETOOTH_SETTINGS).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                    context.startActivity(intent)
                     messageList.add(MessageModel("Please turn off Bluetooth manually in settings", "model"))
+                    viewModelScope.launch {
+                        delay(1000)  // 1 Second delay
+                        val intent = Intent(Settings.ACTION_BLUETOOTH_SETTINGS).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    }
                 } else {
                     messageList.add(MessageModel("Bluetooth is already OFF", "model"))
                 }
@@ -217,18 +264,24 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private fun toggleLocationService(context: Context, action: String) {
         when (action.lowercase()) {
             "on" -> {
-                val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(intent)
                 messageList.add(MessageModel("Opening Location Settings to turn ON", "model"))
+                viewModelScope.launch {
+                    delay(1000)  // 1 Second delay
+                    val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                }
             }
             "off" -> {
-                val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(intent)
                 messageList.add(MessageModel("Opening Location Settings to turn OFF", "model"))
+                viewModelScope.launch {
+                    delay(1000)  // 1 Second delay
+                    val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                }
             }
             "check" -> {
                 val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
@@ -245,22 +298,28 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         when (action.lowercase()) {
             "on" -> {
                 if (!isAirplaneModeOn) {
-                    val intent = Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                    context.startActivity(intent)
                     messageList.add(MessageModel("Please enable Airplane mode manually", "model"))
+                    viewModelScope.launch {
+                        delay(1000)  // 1 Second delay
+                        val intent = Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    }
                 } else {
                     messageList.add(MessageModel("Airplane mode is already ON", "model"))
                 }
             }
             "off" -> {
                 if (isAirplaneModeOn) {
-                    val intent = Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                    context.startActivity(intent)
                     messageList.add(MessageModel("Please disable Airplane mode manually", "model"))
+                    viewModelScope.launch {
+                        delay(1000)  // 1 Second delay
+                        val intent = Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    }
                 } else {
                     messageList.add(MessageModel("Airplane mode is already OFF", "model"))
                 }
@@ -276,11 +335,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         if (!notificationManager.isNotificationPolicyAccessGranted) {
-            val intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
             messageList.add(MessageModel("Please grant Do Not Disturb access", "model"))
+            viewModelScope.launch {
+                delay(1000)  // 1 Second delay
+                val intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+            }
             return
         }
 
@@ -300,6 +362,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             else -> messageList.add(MessageModel("Unknown action for Do Not Disturb mode", "model"))
         }
     }
+
     //================================================================
     //================================================================--> Handle Weather
     private fun handleWeatherQuery(json: JsonObject) {
@@ -401,17 +464,19 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             val messageBody = entities.getAsJsonArray("wit\$message_body:message_body")?.get(0)?.asJsonObject?.get("value")?.asString ?: ""
             val datetime = entities.getAsJsonArray("wit\$datetime:datetime")?.get(0)?.asJsonObject?.get("value")?.asString ?: ""
 
-            Log.d("SetReminderHandler", "Setting reminder with message: $messageBody, datetime: $datetime")
+            // Fetch the authorized user's email from AuthViewModel
+            val accountName = authViewModel.uiState.value.authorizedUserEmail
+            Log.d("SetReminderHandler", "Setting reminder with message: $messageBody, datetime: $datetime, account: $accountName")
 
             val reminderViewModel = ReminderViewModel()
             if (datetime.isEmpty()) {
                 // Set as an all-day reminder
                 Log.d("SetReminderHandler", "No datetime specified, setting as all-day reminder")
-                reminderViewModel.setAllDayReminder(context, messageBody) { result ->
+                reminderViewModel.setAllDayReminder(context, accountName, messageBody) { result ->
                     messageList.add(MessageModel(result, "model"))
                 }
             } else {
-                reminderViewModel.setReminder(context, messageBody, datetime) { result ->
+                reminderViewModel.setReminder(context, accountName, messageBody, datetime) { result ->
                     messageList.add(MessageModel(result, "model"))
                 }
             }
@@ -427,8 +492,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val datetime = entities.getAsJsonArray("wit\$datetime:datetime")?.get(0)?.asJsonObject?.get("value")?.asString ?: ""
         val frequency = entities.getAsJsonArray("frequency:frequency")?.get(0)?.asJsonObject?.get("value")?.asString ?: ""
 
+        // Fetch the authorized user's email from AuthViewModel
+        val accountName = authViewModel.uiState.value.authorizedUserEmail
+        Log.d("SetRecurringReminderHandler", "Setting recurring reminder with message: $messageBody, datetime: $datetime, frequency: $frequency, account: $accountName")
+
         val reminderViewModel = ReminderViewModel()
-        reminderViewModel.setRecurringReminder(context, messageBody, datetime, frequency) { result ->
+        reminderViewModel.setRecurringReminder(context, accountName, messageBody, datetime, frequency) { result ->
             messageList.add(MessageModel(result, "model"))
         }
     }

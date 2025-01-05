@@ -5,6 +5,7 @@ import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -81,6 +82,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.lena.Data.LenaConstants.greetingStrings
+import com.example.lena.Data.LenaConstants.thinkingStrings
 import com.example.lena.Models.MessageModel
 import com.example.lena.R
 import com.example.lena.Screens
@@ -399,6 +401,7 @@ fun MessageRow(messageModel: MessageModel) {
 fun MessageInput(
     onMessageSend: (String) -> Unit,
     modifier: Modifier = Modifier,
+    chatViewModel: ChatViewModel = viewModel(),
     speechRecognitionViewModel: SpeechRecognitionViewModel = viewModel()
 ) {
     var message by remember { mutableStateOf("") }
@@ -414,6 +417,8 @@ fun MessageInput(
     val isListening by speechRecognitionViewModel.isListening.collectAsState()
     val spokenText by speechRecognitionViewModel.spokenText.observeAsState()
     val error by speechRecognitionViewModel.error.observeAsState()
+    val autoContinue by speechRecognitionViewModel.autoContinue.collectAsState()
+
 
     // Permission handling
     val permissionState = rememberPermissionState { permissions ->
@@ -438,6 +443,44 @@ fun MessageInput(
     LaunchedEffect(spokenText) {
         spokenText?.let {
             message = it
+            onMessageSend(message.trim())
+            message = ""
+            focusManager.clearFocus()
+        }
+    }
+
+    fun isThinkingString(prompt: String?): Boolean {
+        val result = thinkingStrings.any { prompt == it }
+        return result
+    }
+
+    // Handle responses and auto-continue
+    LaunchedEffect(chatViewModel.messageList.size) {
+        scope.launch {
+            delay(1500)  // Initial delay to allow processing
+
+            while (true) {
+                val lastMessage = chatViewModel.messageList.lastOrNull()
+
+                if (lastMessage?.role == "model" && isThinkingString(lastMessage.prompt)) {
+                    delay(500)  // Additional delay to check again
+                } else {
+                    if (autoContinue && !isListening) {
+                        speechRecognitionViewModel.handleMicrophoneClick()
+                    }
+                    break
+                }
+            }
+        }
+    }
+
+
+    // Handle errors
+    LaunchedEffect(error) {
+        error?.let {
+            Log.d("MessageInput", "Speech recognition error: $it")
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            speechRecognitionViewModel.clearError()
         }
     }
 
@@ -478,7 +521,6 @@ fun MessageInput(
                         if(message.isNotBlank()){
                             onMessageSend(message.trim())
                             message = ""
-                            focusManager.clearFocus()
                         }
                         true
                     } else {
@@ -496,6 +538,7 @@ fun MessageInput(
                         message = ""
                         keyboardController?.hide()
                         focusManager.clearFocus()
+
                     }
                 }
             ),
@@ -518,6 +561,7 @@ fun MessageInput(
                             context,
                             Manifest.permission.RECORD_AUDIO
                         ) == PackageManager.PERMISSION_GRANTED -> {
+                            speechRecognitionViewModel.toggleAutoContinue()
                             speechRecognitionViewModel.handleMicrophoneClick()
                         }
                         activity?.let {

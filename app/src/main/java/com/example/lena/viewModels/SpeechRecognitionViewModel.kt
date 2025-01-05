@@ -28,6 +28,9 @@ class SpeechRecognitionViewModel(application: Application) : AndroidViewModel(ap
     private val _needsPermission = MutableStateFlow(false)
     val needsPermission: StateFlow<Boolean> = _needsPermission
 
+    private val _autoContinue = MutableStateFlow(false)
+    val autoContinue: StateFlow<Boolean> = _autoContinue
+
     private var speechRecognizer: SpeechRecognizer? = null
 
 
@@ -60,10 +63,12 @@ class SpeechRecognitionViewModel(application: Application) : AndroidViewModel(ap
             }
             isListening.value -> {
                 stopListening()
+                _autoContinue.value = false
             }
             else -> {
                 checkAndInitializeSpeechRecognizer()
                 startListening()
+                _autoContinue.value = true
             }
         }
     }
@@ -114,6 +119,7 @@ class SpeechRecognitionViewModel(application: Application) : AndroidViewModel(ap
         })
     }
 
+
     private fun startListening() {
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -136,6 +142,14 @@ class SpeechRecognitionViewModel(application: Application) : AndroidViewModel(ap
 
     fun onPermissionHandled() {
         _needsPermission.value = false
+    }
+
+    fun toggleAutoContinue() {
+        _autoContinue.value = !_autoContinue.value
+    }
+
+    fun setAutoContinue(value: Boolean) {
+        _autoContinue.value = value
     }
 
     // Call this to reset the error after displaying it

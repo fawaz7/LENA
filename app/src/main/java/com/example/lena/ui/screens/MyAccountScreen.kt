@@ -166,7 +166,7 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
 
     val imeSpacer1 by animateDpAsState(targetValue = if (isImeVisible && isDialogsOff()) 0.dp else 64.dp, animationSpec = tween(durationMillis = 300),
         label = "ImeSpacer1 Animation")
-    val imeSpacer2 by animateDpAsState(targetValue = if (isImeVisible && isDialogsOff()) 0.dp else 64.dp, animationSpec = tween(durationMillis = 300),
+    val imeSpacer2 by animateDpAsState(targetValue = if (isImeVisible && isDialogsOff()) 0.dp else 16.dp, animationSpec = tween(durationMillis = 300),
         label = "ImeSpacer1 Animation")
 
 
@@ -214,7 +214,7 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
             FadedHorizontalDivider(topPadding = 16.dp, bottomPadding = 8.dp)
             Spacer(modifier = Modifier.height(imeSpacer2).fillMaxWidth())
 
-            // Options Section
+            //=================================================================================--> Change Email/Password Options Section
             Box(
                 Modifier.fillMaxSize(),
             ) {
@@ -348,7 +348,7 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
 
                     Text(
                         text = "Change Password",
-                        fontWeight = FontWeight.Light,
+                        fontWeight = if (selectedOption.value == SelectedOption.ChangePassword) FontWeight.W500 else FontWeight.Light,
                         fontSize = 20.sp,
                         modifier = Modifier.clickable {
                             selectedOption.value =

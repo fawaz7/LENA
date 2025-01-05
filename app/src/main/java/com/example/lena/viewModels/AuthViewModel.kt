@@ -1,10 +1,12 @@
 package com.example.lena.viewModels
 
+import android.app.Application
 import android.util.Log
 import android.util.Patterns
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import com.example.lena.Screens
@@ -790,6 +792,17 @@ class AuthViewModel : ViewModel() {
             }
         }
     }
+    class Factory(private val application: Application) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            if (modelClass.isAssignableFrom(AuthViewModel::class.java)) {
+                return AuthViewModel() as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class")
+        }
+    }
+
+
 }
 
 

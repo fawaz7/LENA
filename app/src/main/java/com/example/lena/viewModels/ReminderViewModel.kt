@@ -30,7 +30,7 @@ class ReminderViewModel : ViewModel() {
         }
     )
 
-    fun setReminder(context: Context, title: String, datetime: String, onResult: (String) -> Unit) {
+    fun setReminder(context: Context, accountName: String, title: String, datetime: String, onResult: (String) -> Unit) {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
             Log.e("ReminderViewModel", "Calendar permissions not granted")
@@ -38,9 +38,9 @@ class ReminderViewModel : ViewModel() {
             return
         }
 
-        val calendarId = getCalendarId(context) ?: run {
-            Log.e("ReminderViewModel", "No calendar found")
-            onResult("No calendar found")
+        val calendarId = getCalendarId(context, accountName) ?: run {
+            Log.e("ReminderViewModel", "No calendar found for account: $accountName")
+            onResult("No calendar found for account: $accountName")
             return
         }
 
@@ -58,19 +58,26 @@ class ReminderViewModel : ViewModel() {
                     put(CalendarContract.Events.TITLE, title)
                     put(CalendarContract.Events.CALENDAR_ID, calendarId)
                     put(CalendarContract.Events.EVENT_TIMEZONE, calendar.timeZone.id)
+                    put(CalendarContract.Events.DESCRIPTION, "Reminder set by Lena")
+                    put(CalendarContract.Events.HAS_ALARM, 1) // Ensure event has alarm
+                    put(CalendarContract.Events.STATUS, CalendarContract.Events.STATUS_CONFIRMED)
+                    put(CalendarContract.Events.ORGANIZER, accountName) // Set organizer
                 }
+
+                Log.d("ReminderViewModel", "ContentValues: $values")
 
                 val uri = context.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
-                val result = if (uri != null) {
-                    Log.d("ReminderViewModel", "Reminder set successfully")
-                    processWithGemini("Set a reminder for $title at $datetime")
+                if (uri != null) {
+                    Log.d("ReminderViewModel", "Reminder set successfully with URI: $uri")
+                    val result = processWithGemini("Set a reminder for $title at $datetime")
+                    withContext(Dispatchers.Main) {
+                        onResult(result)
+                    }
                 } else {
                     Log.w("ReminderViewModel", "Failed to set reminder")
-                    "Failed to set reminder"
-                }
-
-                withContext(Dispatchers.Main) {
-                    onResult(result)
+                    withContext(Dispatchers.Main) {
+                        onResult("Failed to set reminder")
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("ReminderViewModel", "Error setting reminder", e)
@@ -81,7 +88,7 @@ class ReminderViewModel : ViewModel() {
         }
     }
 
-    fun setAllDayReminder(context: Context, title: String, onResult: (String) -> Unit) {
+    fun setAllDayReminder(context: Context, accountName: String, title: String, onResult: (String) -> Unit) {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
             Log.e("ReminderViewModel", "WRITE_CALENDAR permission not granted")
@@ -89,9 +96,9 @@ class ReminderViewModel : ViewModel() {
             return
         }
 
-        val calendarId = getCalendarId(context) ?: run {
-            Log.e("ReminderViewModel", "No calendar found")
-            onResult("No calendar found")
+        val calendarId = getCalendarId(context, accountName) ?: run {
+            Log.e("ReminderViewModel", "No calendar found for account: $accountName")
+            onResult("No calendar found for account: $accountName")
             return
         }
 
@@ -112,11 +119,14 @@ class ReminderViewModel : ViewModel() {
                     put(CalendarContract.Events.CALENDAR_ID, calendarId)
                     put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getTimeZone("UTC").id)
                     put(CalendarContract.Events.ALL_DAY, 1)
+                    put(CalendarContract.Events.DESCRIPTION, "All-day reminder set by Lena")
+                    put(CalendarContract.Events.HAS_ALARM, 1) // Ensure event has alarm
+                    put(CalendarContract.Events.ORGANIZER, accountName) // Set organizer
                 }
 
                 val uri = context.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
                 val result = if (uri != null) {
-                    Log.d("ReminderViewModel", "All-day reminder set successfully")
+                    Log.d("ReminderViewModel", "All-day reminder set successfully with URI: $uri")
                     processWithGemini("Set an all-day reminder for $title")
                 } else {
                     Log.w("ReminderViewModel", "Failed to set all-day reminder")
@@ -135,7 +145,7 @@ class ReminderViewModel : ViewModel() {
         }
     }
 
-    fun setRecurringReminder(context: Context, title: String, datetime: String, frequency: String, onResult: (String) -> Unit) {
+    fun setRecurringReminder(context: Context, accountName: String, title: String, datetime: String, frequency: String, onResult: (String) -> Unit) {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
             Log.e("ReminderViewModel", "WRITE_CALENDAR permission not granted")
@@ -143,9 +153,9 @@ class ReminderViewModel : ViewModel() {
             return
         }
 
-        val calendarId = getCalendarId(context) ?: run {
-            Log.e("ReminderViewModel", "No calendar found")
-            onResult("No calendar found")
+        val calendarId = getCalendarId(context, accountName) ?: run {
+            Log.e("ReminderViewModel", "No calendar found for account: $accountName")
+            onResult("No calendar found for account: $accountName")
             return
         }
 
@@ -164,11 +174,14 @@ class ReminderViewModel : ViewModel() {
                     put(CalendarContract.Events.CALENDAR_ID, calendarId)
                     put(CalendarContract.Events.EVENT_TIMEZONE, calendar.timeZone.id)
                     put(CalendarContract.Events.RRULE, "FREQ=${frequency.uppercase()};WKST=SU")
+                    put(CalendarContract.Events.DESCRIPTION, "Recurring reminder set by Lena")
+                    put(CalendarContract.Events.HAS_ALARM, 1) // Ensure event has alarm
+                    put(CalendarContract.Events.ORGANIZER, accountName) // Set organizer
                 }
 
                 val uri = context.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
                 val result = if (uri != null) {
-                    Log.d("ReminderViewModel", "Recurring reminder set successfully")
+                    Log.d("ReminderViewModel", "Recurring reminder set successfully with URI: $uri")
                     processWithGemini("Set a recurring reminder for $title at $datetime with frequency $frequency")
                 } else {
                     Log.w("ReminderViewModel", "Failed to set recurring reminder")
@@ -254,13 +267,20 @@ class ReminderViewModel : ViewModel() {
         }
     }
 
-    private fun getCalendarId(context: Context): Long? {
-        val projection = arrayOf(CalendarContract.Calendars._ID, CalendarContract.Calendars.CALENDAR_DISPLAY_NAME)
+    private fun getCalendarId(context: Context, accountName: String): Long? {
+        val projection = arrayOf(
+            CalendarContract.Calendars._ID,
+            CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
+            CalendarContract.Calendars.ACCOUNT_NAME
+        )
+        val selection = "${CalendarContract.Calendars.ACCOUNT_NAME} = ?"
+        val selectionArgs = arrayOf(accountName)
+
         val cursor = context.contentResolver.query(
             CalendarContract.Calendars.CONTENT_URI,
             projection,
-            null,
-            null,
+            selection,
+            selectionArgs,
             null
         )
 
@@ -269,12 +289,14 @@ class ReminderViewModel : ViewModel() {
                 do {
                     val id = it.getLong(it.getColumnIndexOrThrow(CalendarContract.Calendars._ID))
                     val displayName = it.getString(it.getColumnIndexOrThrow(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME))
-                    Log.d("CalendarInfo", "ID: $id, Display Name: $displayName")
-                    // Return the first calendar ID or choose based on some criteria
+                    val accountNameCursor = it.getString(it.getColumnIndexOrThrow(CalendarContract.Calendars.ACCOUNT_NAME))
+                    Log.d("CalendarInfo", "ID: $id, Display Name: $displayName, Account Name: $accountNameCursor")
+                    // Return the first calendar ID that matches the account name
                     return id
                 } while (it.moveToNext())
             }
         }
+        Log.e("ReminderViewModel", "No calendar ID found for account: $accountName")
         return null
     }
 
