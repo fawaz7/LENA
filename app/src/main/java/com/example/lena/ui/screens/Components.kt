@@ -240,3 +240,47 @@ internal fun FadedHorizontalDivider(topPadding: Dp = 0.dp, bottomPadding: Dp = 0
     )
 }
 
+@Composable
+fun PermissionDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    showRationale: Boolean = false
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = if (showRationale)
+                    "Permissions Required"
+                else
+                    "Important Permissions"
+            )
+        },
+        text = {
+            Text(
+                text = if (showRationale) {
+                    "These permissions are needed for core functionality. " +
+                            "Please grant them in Settings."
+                } else {
+                    "This app requires location, calendar, microphone, and " +
+                            "Bluetooth permissions for full functionality."
+                }
+            )
+        },
+        confirmButton = {
+            Button(onClick = onConfirm) {
+                Text(
+                    text = if (showRationale)
+                        "Open Settings"
+                    else
+                        "Grant Permissions"
+                )
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}

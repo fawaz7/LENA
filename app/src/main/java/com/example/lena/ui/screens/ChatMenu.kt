@@ -3,10 +3,13 @@ package com.example.lena.ui.screens
 
 import android.Manifest
 import android.app.Activity
+import android.content.pm.PackageManager
+import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -25,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.input.key.*
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -35,8 +39,6 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.MicNone
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -74,6 +76,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.lena.Data.LenaConstants.greetingStrings
@@ -83,6 +87,8 @@ import com.example.lena.Screens
 import com.example.lena.ui.theme.DarkSuccess
 import com.example.lena.ui.theme.LENATheme
 import com.example.lena.ui.theme.LightSuccess
+import com.example.lena.utils.PermissionManager
+import com.example.lena.utils.rememberPermissionState
 import com.example.lena.viewModels.AuthState
 import com.example.lena.viewModels.AuthViewModel
 import com.example.lena.viewModels.ChatViewModel
@@ -91,9 +97,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 
-
-
-
+@RequiresApi(Build.VERSION_CODES.S)
 @Composable
 fun ChatMenu(navController: NavController, authViewModel: AuthViewModel) {
     val focusManager = LocalFocusManager.current
@@ -105,37 +109,100 @@ fun ChatMenu(navController: NavController, authViewModel: AuthViewModel) {
     val context = LocalContext.current
     val activity = context as? Activity
 
-    //=============================================================--> Permission handling
-    var showPermissionPopup by remember { mutableStateOf(true) }
-    //================================================================
+    // Permission handling states
+    var showPermissionDialog by remember { mutableStateOf(false) }
+    var showRationaleDialog by remember { mutableStateOf(false) }
 
+    val multiplePermissionResultLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val deniedPermissions = permissions.filterValues { !it }.keys.toList()
 
-    LaunchedEffect(authState.value) {
-        when(authState.value) {
-            is AuthState.Unauthenticated -> {
-                navController.navigate(Screens.LoginScreen.name) {
-                    popUpTo(Screens.ChatMenu.name) { inclusive = true }
+        if (deniedPermissions.isNotEmpty()) {
+            val shouldShowRationaleForAny = deniedPermissions.any { permission ->
+                activity?.let {
+                    ActivityCompat.shouldShowRequestPermissionRationale(it, permission)
+                } == true
+            }
+
+            if (shouldShowRationaleForAny) {
+                showRationaleDialog = true
+            } else {
+                Toast.makeText(
+                    context,
+                    "Please enable all required permissions in Settings",
+                    Toast.LENGTH_LONG
+                ).show()
+                PermissionManager.openAppSettings(context)
+            }
+        } else {
+            PermissionManager.updatePermissionsRequested(context)
+            Toast.makeText(context, "All permissions granted", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (!PermissionManager.checkPermissions(context).all { it.value } &&
+            !PermissionManager.hasRequestedPermissionsBefore(context)
+        ) {
+            showPermissionDialog = true
+        }
+    }
+
+    if (showPermissionDialog) {
+        PermissionDialog(
+            onDismiss = {
+                showPermissionDialog = false
+                if (!PermissionManager.checkPermissions(context).all { it.value }) {
+                    Toast.makeText(
+                        context,
+                        "Some features may be limited without permissions",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            },
+            onConfirm = {
+                showPermissionDialog = false
+                val ungranted = PermissionManager.REQUIRED_PERMISSIONS.filter {
+                    ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+                }
+                if (ungranted.isNotEmpty()) {
+                    multiplePermissionResultLauncher.launch(ungranted.toTypedArray())
                 }
             }
-            else -> Unit
-        }
+        )
+    }
+
+    if (showRationaleDialog) {
+        PermissionDialog(
+            onDismiss = {
+                showRationaleDialog = false
+                Toast.makeText(
+                    context,
+                    "Some features may be limited without permissions",
+                    Toast.LENGTH_LONG
+                ).show()
+            },
+            onConfirm = {
+                showRationaleDialog = false
+                PermissionManager.openAppSettings(context)
+            },
+            showRationale = true
+        )
     }
 
     BackHandler(enabled = authState.value is AuthState.Authenticated) {
         if (backPressedOnce) {
-            // Exit the app
             activity?.finish()
         } else {
             backPressedOnce = true
             Toast.makeText(context, "Press back again to exit", Toast.LENGTH_SHORT).show()
             coroutineScope.launch {
-                delay(2000)  // 2 seconds to reset the flag
+                delay(2000)
                 backPressedOnce = false
             }
         }
     }
-
-
 
     Scaffold(
         topBar = { MainMenuTopBar(viewModel = authViewModel, navController = navController) }
@@ -146,34 +213,30 @@ fun ChatMenu(navController: NavController, authViewModel: AuthViewModel) {
                 .padding(innerPadding)
                 .imePadding()
         ) {
-            if (showPermissionPopup) {
-                PermissionPopup(onDismiss = { showPermissionPopup = false })
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = 64.dp)
-                        .pointerInput(Unit) {
-                            detectTapGestures(onTap = {
-                                focusManager.clearFocus()
-                                keyboardController?.hide()
-                            })
-                        }
-                ) {
-                    MessageList(
-                        messageList = chatViewModel.messageList,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                MessageInput(
-                    onMessageSend = { chatViewModel.sendMessage(it) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.BottomCenter)
-                        .imePadding()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 64.dp)
+                    .pointerInput(Unit) {
+                        detectTapGestures(onTap = {
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
+                        })
+                    }
+            ) {
+                MessageList(
+                    messageList = chatViewModel.messageList,
+                    modifier = Modifier.weight(1f)
                 )
             }
+
+            MessageInput(
+                onMessageSend = { chatViewModel.sendMessage(it) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .imePadding()
+            )
         }
     }
 }
@@ -331,6 +394,7 @@ fun MessageRow(messageModel: MessageModel) {
 
 
 
+@RequiresApi(Build.VERSION_CODES.S)
 @Composable
 fun MessageInput(
     onMessageSend: (String) -> Unit,
@@ -338,35 +402,35 @@ fun MessageInput(
     speechRecognitionViewModel: SpeechRecognitionViewModel = viewModel()
 ) {
     var message by remember { mutableStateOf("") }
+    var showPermissionDialog by remember { mutableStateOf(false) }
 
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
+    val activity = LocalContext.current as? Activity
+    val scope = rememberCoroutineScope()
 
+    // Speech recognition states
     val isListening by speechRecognitionViewModel.isListening.collectAsState()
     val spokenText by speechRecognitionViewModel.spokenText.observeAsState()
-    val needsPermission by speechRecognitionViewModel.needsPermission.collectAsState()
     val error by speechRecognitionViewModel.error.observeAsState()
 
-    // Permission launcher
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            speechRecognitionViewModel.checkAndInitializeSpeechRecognizer()
-            speechRecognitionViewModel.handleMicrophoneClick()
-        } else {
-            // Handle permission denied case
-            Toast.makeText(context, "Permission denied", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    // Handle permission request
-    LaunchedEffect(needsPermission) {
-        if (needsPermission) {
-            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-            // Reset the flag inside the ViewModel after handling
-            speechRecognitionViewModel.onPermissionHandled()
+    // Permission handling
+    val permissionState = rememberPermissionState { permissions ->
+        when {
+            permissions[Manifest.permission.RECORD_AUDIO] == true -> {
+                scope.launch {
+                    speechRecognitionViewModel.checkAndInitializeSpeechRecognizer()
+                    speechRecognitionViewModel.handleMicrophoneClick()
+                }
+            }
+            activity?.let { PermissionManager.shouldShowRationale(it, listOf(Manifest.permission.RECORD_AUDIO)) } == true -> {
+                showPermissionDialog = true
+            }
+            else -> {
+                Toast.makeText(context, "Microphone permission is required for voice input", Toast.LENGTH_SHORT).show()
+                PermissionManager.openAppSettings(context)
+            }
         }
     }
 
@@ -374,9 +438,6 @@ fun MessageInput(
     LaunchedEffect(spokenText) {
         spokenText?.let {
             message = it
-            // Optionally, send the message automatically
-            // onMessageSend(message.trim())
-            // message = ""
         }
     }
 
@@ -386,6 +447,18 @@ fun MessageInput(
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
             speechRecognitionViewModel.clearError()
         }
+    }
+
+    // Permission dialog
+    if (showPermissionDialog) {
+        PermissionDialog(
+            onDismiss = { showPermissionDialog = false },
+            onConfirm = {
+                showPermissionDialog = false
+                PermissionManager.openAppSettings(context)
+            },
+            showRationale = true
+        )
     }
 
     Row(
@@ -400,7 +473,18 @@ fun MessageInput(
             label = { Text(stringResource(R.string.textField_label)) },
             modifier = Modifier
                 .weight(1f)
-                .imePadding(),
+                .imePadding().onKeyEvent { keyEvent ->
+                    if (keyEvent.key == Key.Enter && keyEvent.type == KeyEventType.KeyUp) {
+                        if(message.isNotBlank()){
+                            onMessageSend(message.trim())
+                            message = ""
+                            focusManager.clearFocus()
+                        }
+                        true
+                    } else {
+                        false
+                    }
+                },
             maxLines = 4,
             keyboardOptions = KeyboardOptions.Default.copy(
                 imeAction = if (message.isNotBlank()) ImeAction.Send else ImeAction.Default
@@ -428,7 +512,28 @@ fun MessageInput(
                     message = ""
                     focusManager.clearFocus()
                 } else {
-                    speechRecognitionViewModel.handleMicrophoneClick()
+                    // Check microphone permission before handling click
+                    when {
+                        ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.RECORD_AUDIO
+                        ) == PackageManager.PERMISSION_GRANTED -> {
+                            speechRecognitionViewModel.handleMicrophoneClick()
+                        }
+                        activity?.let {
+                            ActivityCompat.shouldShowRequestPermissionRationale(
+                                it,
+                                Manifest.permission.RECORD_AUDIO
+                            )
+                        } == true -> {
+                            showPermissionDialog = true
+                        }
+                        else -> {
+                            permissionState.permissionLauncher.launch(
+                                arrayOf(Manifest.permission.RECORD_AUDIO)
+                            )
+                        }
+                    }
                 }
             }
         ) {
@@ -443,7 +548,11 @@ fun MessageInput(
                     isListening -> stringResource(R.string.stop_listening)
                     else -> stringResource(R.string.start_listening)
                 },
-                tint = if (isListening) if (isSystemInDarkTheme()) {DarkSuccess} else {LightSuccess} else MaterialTheme.colorScheme.onSurface,
+                tint = if (isListening) {
+                    if (isSystemInDarkTheme()) DarkSuccess else LightSuccess
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
                 modifier = Modifier.size(28.dp)
             )
         }
@@ -477,44 +586,6 @@ fun Greetings(){
     }
 }
 
-@Composable
-fun PermissionPopup(onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    val activity = context as? Activity
-
-    val permissions = listOf(
-        Manifest.permission.ACCESS_FINE_LOCATION,
-        Manifest.permission.BLUETOOTH,
-        Manifest.permission.SET_ALARM,
-        Manifest.permission.WRITE_CALENDAR
-    )
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissionsResult ->
-        // Handle permission results here
-        if (permissionsResult.all { it.value }) {
-            Toast.makeText(context, "All permissions granted", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(context, "Some permissions were denied", Toast.LENGTH_SHORT).show()
-        }
-        onDismiss()
-    }
-
-    AlertDialog(
-        onDismissRequest = { onDismiss() },
-        confirmButton = {
-            Button(onClick = {
-                permissionLauncher.launch(permissions.toTypedArray())
-            }) {
-                Text("OK")
-            }
-        },
-        title = { Text("Permission Request") },
-        text = { Text("Please accept the following permissions.") },
-        dismissButton = null
-    )
-}
 
 @Preview()
 @Composable
@@ -522,13 +593,7 @@ fun MainMenuPreview() {
 
 }
 
-@Preview
-@Composable
-fun MessageInputPreview(){
-    LENATheme {
-        MessageInput({})
-    }
-}
+
 
 @Preview
 @Composable

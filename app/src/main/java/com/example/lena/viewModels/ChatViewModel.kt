@@ -80,14 +80,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
             if (intentsArray != null && intentsArray.size() > 0) {
                 val intentName = intentsArray.get(0).asJsonObject.get("name").asString
+                Log.d("ChatViewModel", "Intent: $intentName")
+                val context = getApplication<Application>().applicationContext
                 when (intentName) {
-                    "control_device_feature" -> handleControlDeviceFeature(json)
+                    "control_device_feature" -> handleControlDeviceFeature(json, prompt)
                     "wit\$get_weather" -> handleWeatherQuery(json)
-                    //"wit\$check_weather_condition" -> handleWeatherConditionQuery(json)
-                    //"lena_set_reminder" -> handleSetReminder(json)
-                    //"lena_set_recurring_reminder" -> handleSetRecurringReminder(json)
-                    //"wit\$create_alarm" -> handleSetAlarm(json)
-                    //"lena_get_directions" -> handleGetDirections(json)
+                    "wit\$check_weather_condition" -> handleWeatherConditionQuery(json)
+                    "lena_set_reminder" -> handleSetReminder(context,json)
+                    "lena_set_recurring_reminder" -> handleSetRecurringReminder(context,json)
+                    "lena_check_reminders" -> handleCheckReminder(context, json)
+                    "wit\$create_alarm" -> handleSetAlarm(context,json)
+                    "lena_get_directions" -> handleGetDirections(context,json)
                     else -> fallbackToGenerativeModel(prompt)
                 }
             } else {
@@ -99,7 +102,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     //================================================================--> Handle Control Device Feature
-    private fun handleControlDeviceFeature(json: JsonObject) {
+    private fun handleControlDeviceFeature(json: JsonObject, initialPrompt: String) {
         try {
             val traits = json.getAsJsonObject("traits")
             val entities = json.getAsJsonObject("entities")
@@ -115,7 +118,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 "location services", "location service" -> toggleLocationService(context, action)
                 "airplane mode" -> toggleAirplaneMode(context, action)
                 "do not disturb mode", "don't disturb mode" -> toggleDoNotDisturbMode(context, action)
-                else -> messageList.add(MessageModel("Unknown feature: $feature", "model"))
+                else -> fallbackToGenerativeModel(initialPrompt)
             }
         } catch (e: Exception) {
             Log.e("ChatViewModel", "Error handling control device feature: ${e.message}")
@@ -332,6 +335,40 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun handleWeatherConditionQuery(json: JsonObject) {
+        val context = getApplication<Application>().applicationContext
+        try {
+            val entities = json.getAsJsonObject("entities")
+            val traits = json.getAsJsonObject("traits")
+
+            val location = entities.getAsJsonArray("wit\$location:location")?.get(0)?.asJsonObject?.get("resolved")?.asJsonObject
+            val datetime = entities.getAsJsonArray("wit\$datetime:datetime")?.get(0)?.asJsonObject?.get("value")?.asString
+            val condition = entities.getAsJsonArray("weather_condition:weather_condition")?.get(0)?.asJsonObject?.get("value")?.asString
+            val forecastType = traits?.getAsJsonArray("forecast_type")?.get(0)?.asJsonObject?.get("value")?.asString ?: "current"
+
+            if (location != null) {
+                val locationName = location.getAsJsonArray("values")?.get(0)?.asJsonObject?.get("name")?.asString
+                val coords = location.getAsJsonArray("values")?.get(0)?.asJsonObject?.get("coords")?.asJsonObject
+                val lat = coords?.get("lat")?.asDouble
+                val lon = coords?.get("long")?.asDouble
+
+                if (lat != null && lon != null) {
+                    weatherViewModel.checkWeatherCondition(lat, lon, datetime, forecastType, condition) { weatherResult ->
+                        messageList.add(MessageModel(weatherResult, "model"))
+                    }
+                } else {
+                    messageList.add(MessageModel("Unable to determine coordinates for $locationName", "model"))
+                }
+            } else {
+                // If no location is specified, use the current location
+                fetchCurrentLocationWeatherCondition(context, datetime, forecastType, condition)
+            }
+        } catch (e: Exception) {
+            Log.e("ChatViewModel", "Error handling weather condition query: ${e.message}")
+            messageList.add(MessageModel("Error handling weather condition query", "model"))
+        }
+    }
+
     private fun fetchCurrentLocationWeather(context: Context, datetime: String?, forecastType: String) {
         weatherViewModel.fetchCurrentLocationWeather(context) { location ->
             if (location != null) {
@@ -343,6 +380,155 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    private fun fetchCurrentLocationWeatherCondition(context: Context, datetime: String?, forecastType: String, condition: String?) {
+        weatherViewModel.fetchCurrentLocationWeather(context) { location ->
+            if (location != null) {
+                weatherViewModel.checkWeatherCondition(location.latitude, location.longitude, datetime, forecastType, condition) { weatherResult ->
+                    messageList.add(MessageModel(weatherResult, "model"))
+                }
+            } else {
+                messageList.add(MessageModel("Unable to determine current location", "model"))
+            }
+        }
+    }
+    //================================================================
+    //================================================================--> Handle Reminders
+
+    fun handleSetReminder(context: Context, json: JsonObject) {
+        try {
+            val entities = json.getAsJsonObject("entities")
+            val messageBody = entities.getAsJsonArray("wit\$message_body:message_body")?.get(0)?.asJsonObject?.get("value")?.asString ?: ""
+            val datetime = entities.getAsJsonArray("wit\$datetime:datetime")?.get(0)?.asJsonObject?.get("value")?.asString ?: ""
+
+            Log.d("SetReminderHandler", "Setting reminder with message: $messageBody, datetime: $datetime")
+
+            val reminderViewModel = ReminderViewModel()
+            if (datetime.isEmpty()) {
+                // Set as an all-day reminder
+                Log.d("SetReminderHandler", "No datetime specified, setting as all-day reminder")
+                reminderViewModel.setAllDayReminder(context, messageBody) { result ->
+                    messageList.add(MessageModel(result, "model"))
+                }
+            } else {
+                reminderViewModel.setReminder(context, messageBody, datetime) { result ->
+                    messageList.add(MessageModel(result, "model"))
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("SetReminderHandler", "Error setting reminder", e)
+            messageList.add(MessageModel("Error setting reminder", "model"))
+        }
+    }
+
+    fun handleSetRecurringReminder(context: Context, json: JsonObject) {
+        val entities = json.getAsJsonObject("entities")
+        val messageBody = entities.getAsJsonArray("wit\$message_body:message_body")?.get(0)?.asJsonObject?.get("value")?.asString ?: ""
+        val datetime = entities.getAsJsonArray("wit\$datetime:datetime")?.get(0)?.asJsonObject?.get("value")?.asString ?: ""
+        val frequency = entities.getAsJsonArray("frequency:frequency")?.get(0)?.asJsonObject?.get("value")?.asString ?: ""
+
+        val reminderViewModel = ReminderViewModel()
+        reminderViewModel.setRecurringReminder(context, messageBody, datetime, frequency) { result ->
+            messageList.add(MessageModel(result, "model"))
+        }
+    }
+
+    fun handleCheckReminder(context: Context, json: JsonObject) {
+        try {
+            val entities = json.getAsJsonObject("entities")
+            val datetime = entities.getAsJsonArray("wit\$datetime:datetime")?.get(0)?.asJsonObject?.get("value")?.asString
+
+            Log.d("CheckReminderHandler", "Checking reminders for datetime: $datetime")
+
+            val reminderViewModel = ReminderViewModel()
+            reminderViewModel.checkReminder(context, datetime) { result ->
+                messageList.add(MessageModel(result, "model"))
+            }
+        } catch (e: Exception) {
+            Log.e("CheckReminderHandler", "Error checking reminders", e)
+            messageList.add(MessageModel("Error checking reminders", "model"))
+        }
+    }
+    //================================================================
+    //================================================================--> Handle Reminders
+    private fun handleSetAlarm(context: Context, json: JsonObject) {
+        try {
+            val alarmViewModel = AlarmViewModel()
+            val entities = json.getAsJsonObject("entities")
+            val datetime = entities.getAsJsonArray("wit\$datetime:datetime")?.get(0)?.asJsonObject?.get("value")?.asString ?: ""
+            val isRecurring = json.getAsJsonObject("traits")?.getAsJsonArray("recurring")?.get(0)?.asJsonObject?.get("value")?.asString == "true"
+
+            alarmViewModel.setAlarm(context, datetime, isRecurring) { result ->
+                messageList.add(MessageModel(result, "model"))
+            }
+        } catch (e: Exception) {
+            Log.e("ChatViewModel", "Error setting alarm", e)
+            messageList.add(MessageModel("Error setting alarm", "model"))
+        }
+    }
+    //================================================================
+    //================================================================--> Handle Directions
+    private fun handleGetDirections(context: Context, json: JsonObject) {
+        try {
+            val entities = json.getAsJsonObject("entities")
+
+            val locationArray = entities.getAsJsonArray("wit\$location:location")
+            val source = if (locationArray != null && locationArray.size() > 1) {
+                locationArray[1].asJsonObject.get("body").asString
+            } else {
+                null
+            }
+
+            val destination = if (locationArray != null && locationArray.size() > 0) {
+                locationArray[0].asJsonObject.get("body").asString
+            } else {
+                entities.getAsJsonArray("wit\$local_search_query:local_search_query")?.get(0)?.asJsonObject?.get("body")?.asString
+            } ?: run {
+                messageList.add(MessageModel("Could not determine destination", "model"))
+                return
+            }
+
+            val transportMode = if (json.getAsJsonObject("traits")
+                    ?.getAsJsonArray("no_transport_type_specified")
+                    ?.get(0)
+                    ?.asJsonObject
+                    ?.get("value")
+                    ?.asString == "true"
+            ) {
+                "driving"
+            } else {
+                entities.getAsJsonArray("lena_transport_mode:lena_transport_mode")?.get(0)?.asJsonObject?.get("value")?.asString
+                    ?: "driving"
+            }
+
+            Log.d("GetDirectionsHandler", "Source: $source, Destination: $destination, TransportMode: $transportMode")
+
+            // Create the URI for the directions
+            val uri = if (source != null) {
+                Uri.parse("https://www.google.com/maps/dir/?api=1&origin=$source&destination=$destination&travelmode=$transportMode")
+            } else {
+                Uri.parse("https://www.google.com/maps/dir/?api=1&destination=$destination&travelmode=$transportMode")
+            }
+
+            // Create an intent to open Google Maps
+            val mapIntent = Intent(Intent.ACTION_VIEW, uri).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+
+            // Start the activity
+            try {
+                context.startActivity(mapIntent)
+                messageList.add(MessageModel("Showing directions to $destination", "model"))
+            } catch (e: Exception) {
+                Log.e("GetDirectionsHandler", "Error starting map intent", e)
+                messageList.add(MessageModel("Error starting map: ${e.message}", "model"))
+            }
+        } catch (e: Exception) {
+            Log.e("GetDirectionsHandler", "Error processing directions request", e)
+            messageList.add(MessageModel("Error getting directions", "model"))
+        }
+    }
+    //================================================================
 
 
     private fun fallbackToGenerativeModel(prompt: String) {

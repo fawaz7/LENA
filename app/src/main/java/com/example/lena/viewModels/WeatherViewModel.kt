@@ -1,5 +1,7 @@
 package com.example.lena.viewModels
 
+
+
 import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Location
@@ -7,18 +9,27 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.lena.BuildConfig
+import com.google.ai.client.generativeai.GenerativeModel
+import com.google.ai.client.generativeai.type.content
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.logging.HttpLoggingInterceptor
 import org.json.JSONObject
 
+
 class WeatherViewModel : ViewModel() {
     private val apiKey = BuildConfig.OPEN_WEATHER_MAP_API_KEY
     private val client: OkHttpClient
+    private val generativeModel: GenerativeModel
+
+
+
+
 
     init {
         val logging = HttpLoggingInterceptor()
@@ -26,6 +37,19 @@ class WeatherViewModel : ViewModel() {
         client = OkHttpClient.Builder()
             .addInterceptor(logging)
             .build()
+
+        generativeModel = GenerativeModel(
+            modelName = "gemini-1.5-flash-8b",
+            apiKey = BuildConfig.GOOGLE_API_KEY,
+            systemInstruction = content  {
+                text("You are a helpful virtual assistant specialized in providing concise and easy-to-understand weather information.")
+                text("Your task is to process the weather data response from OpenWeatherMap and present it in a user-friendly format.")
+                text("You should focus on key weather information such as temperature, weather conditions (e.g., sunny, cloudy, rainy), wind speed, and humidity.")
+                text("Omit less important details such as pressure, visibility, and any technical terms.")
+                text("Ensure the response is brief and clear, just like how a personal virtual assistant would describe the weather.")
+            }
+        )
+
     }
 
     fun fetchWeather(lat: Double, lon: Double, datetime: String?, forecastType: String, onResult: (String) -> Unit) {
@@ -45,50 +69,12 @@ class WeatherViewModel : ViewModel() {
 
                 if (responseBody != null) {
                     Log.i("weatherViewModel", "Response received: $responseBody")
-                    val json = JSONObject(responseBody)
-                    val weatherDescription: String
-                    val temperature: Double
 
-                    if (forecastType == "forecast" && datetime != null) {
-                        val forecastArray = json.optJSONArray("list")
-                        if (forecastArray != null) {
-                            val targetDate = datetime.split("T")[0] // Extract the date part
-                            var forecast: JSONObject? = null
-                            for (i in 0 until forecastArray.length()) {
-                                val forecastItem = forecastArray.getJSONObject(i)
-                                if (forecastItem.getString("dt_txt").startsWith(targetDate)) {
-                                    forecast = forecastItem
-                                    break
-                                }
-                            }
+                    // Process data with Gemini
+                    val processedData = processWithGemini(responseBody)
 
-                            if (forecast != null) {
-                                weatherDescription = forecast.getJSONArray("weather").getJSONObject(0).getString("description")
-                                temperature = forecast.getJSONObject("main").getDouble("temp") - 273.15 // Convert from Kelvin to Celsius
-                            } else {
-                                onResult("No forecast available for the specified date")
-                                Log.e("weatherViewModel", "No forecast available for the specified date")
-                                return@launch
-                            }
-                        } else {
-                            onResult("No forecast data available")
-                            Log.e("weatherViewModel", "No forecast data available")
-                            return@launch
-                        }
-                    } else {
-                        val weatherArray = json.optJSONArray("weather")
-                        val mainObject = json.optJSONObject("main")
-                        if (weatherArray != null && mainObject != null) {
-                            weatherDescription = weatherArray.getJSONObject(0).getString("description")
-                            temperature = mainObject.getDouble("temp") - 273.15 // Convert from Kelvin to Celsius
-                        } else {
-                            onResult("Invalid weather data received")
-                            Log.e("weatherViewModel", "Invalid weather data received")
-                            return@launch
-                        }
-                    }
-
-                    onResult("Weather: $weatherDescription, Temperature: ${"%.2f".format(temperature)}°C")
+                    // Return processed data
+                    onResult(processedData.toString())
                 } else {
                     onResult("Failed to retrieve weather data")
                     Log.e("weatherViewModel", "Failed to retrieve weather data")
@@ -96,6 +82,19 @@ class WeatherViewModel : ViewModel() {
             } catch (e: Exception) {
                 Log.e("weatherViewModel", "Error fetching weather data", e)
                 onResult("Error fetching weather data: ${e.message}")
+            }
+        }
+    }
+
+    private suspend fun processWithGemini(weatherData: String): String {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Use GenerativeModel to process the weather data
+                val response = generativeModel.generateContent(weatherData)
+                response.text ?: "Failed to process data with Gemini"
+            } catch (e: Exception) {
+                Log.e("WeatherViewModel", "Error generating content with Gemini: ${e.message}")
+                "Error generating content with Gemini: ${e.message}"
             }
         }
     }
@@ -109,59 +108,34 @@ class WeatherViewModel : ViewModel() {
             }
 
             try {
-                Log.i("weatherViewModel", "Checking weather condition with URL: $url")
+                Log.i("WeatherViewModel", "Checking weather condition with URL: $url")
 
                 val request = Request.Builder().url(url).build()
                 val response = client.newCall(request).execute()
                 val responseBody = response.body?.string()
 
                 if (responseBody != null) {
-                    Log.i("weatherViewModel", "Response received: $responseBody")
-                    val json = JSONObject(responseBody)
+                    Log.i("WeatherViewModel", "Response received: $responseBody")
 
-                    val isConditionMet: Boolean
+                    // Process data with Gemini
+                    val processedData = processWithGemini(responseBody)
 
-                    if (forecastType == "forecast" && datetime != null) {
-                        val forecastArray = json.optJSONArray("list")
-                        if (forecastArray != null) {
-                            val targetDate = datetime.split("T")[0] // Extract the date part
-                            var forecast: JSONObject? = null
-                            for (i in 0 until forecastArray.length()) {
-                                val forecastItem = forecastArray.getJSONObject(i)
-                                if (forecastItem.getString("dt_txt").startsWith(targetDate)) {
-                                    forecast = forecastItem
-                                    break
-                                }
-                            }
+                    // Send the processed data and condition to Gemini for evaluation
+                    val conditionPrompt = "Check if the following weather data meets the condition: $condition\n\n$processedData"
+                    val conditionResult = processWithGemini(conditionPrompt)
 
-                            if (forecast != null) {
-                                isConditionMet = checkCondition(forecast, condition)
-                            } else {
-                                onResult("No forecast available for the specified date")
-                                Log.e("weatherViewModel", "No forecast available for the specified date")
-                                return@launch
-                            }
-                        } else {
-                            onResult("No forecast data available")
-                            Log.e("weatherViewModel", "No forecast data available")
-                            return@launch
-                        }
-                    } else {
-                        isConditionMet = checkCondition(json, condition)
-                    }
-
-                    onResult(if (isConditionMet) "Yes, the condition is met" else "No, the condition is not met")
+                    // Return the result from Gemini
+                    onResult(conditionResult)
                 } else {
                     onResult("Failed to retrieve weather data")
-                    Log.e("weatherViewModel", "Failed to retrieve weather data")
+                    Log.e("WeatherViewModel", "Failed to retrieve weather data")
                 }
             } catch (e: Exception) {
-                Log.e("weatherViewModel", "Error checking weather condition", e)
+                Log.e("WeatherViewModel", "Error checking weather condition", e)
                 onResult("Error checking weather condition: ${e.message}")
             }
         }
     }
-
     private fun checkCondition(json: JSONObject, condition: String?): Boolean {
         return when (condition?.lowercase()) {
             "temperature" -> json.optJSONObject("main")?.has("temp") == true
