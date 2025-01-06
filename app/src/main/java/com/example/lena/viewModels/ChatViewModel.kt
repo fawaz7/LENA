@@ -46,6 +46,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private var systemInstruction: Content? = null
     private var selectedVoice: String = "Rubie"
+    private var isTtsDisabled: Boolean = false
 
     init {
         // Collect the first name and selected voice when they update
@@ -55,7 +56,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 if (firstName.isNotEmpty()) {
                     updateSystemInstruction(firstName)
                 }
-                selectedVoice = state.selectedVoice // Update the selected voice
+                selectedVoice = state.selectedVoice // Update the selected voice and TTS status
+                isTtsDisabled = state.isTtsDisabled
             }
         }
     }
@@ -669,6 +671,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     //================================================================
 
     private fun playResponse(responseText: String) {
+        if (isTtsDisabled) {
+            Log.d("playResponse", "TTS is disabled, skipping audio playback.")
+            return
+        }
         witAiClient.synthesizeSpeech(responseText, selectedVoice) { isSuccessful ->
             if (isSuccessful) {
                 Log.d("playResponse", "Audio playback started successfully.")

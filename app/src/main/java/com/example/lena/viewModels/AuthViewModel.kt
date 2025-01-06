@@ -808,7 +808,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // TODO
     //====================================================================================--> Miscellaneous
     fun signOut(navController: NavController? = null) {
         auth.signOut()
