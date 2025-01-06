@@ -14,6 +14,7 @@ import android.net.Uri
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.provider.Settings
+import android.util.Base64
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.core.app.ActivityCompat
@@ -83,6 +84,13 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private val witAiClient = WitAiClient(BuildConfig.WIT_AI_TOKEN)
     private val weatherViewModel = WeatherViewModel()
+
+    private val voiceViewModel: VoiceViewModel by lazy {
+        val factory = VoiceViewModel.Factory(witAiClient)
+        ViewModelProvider(ViewModelStore(), factory)[VoiceViewModel::class.java]
+    }
+
+    private var mediaPlayer: MediaPlayer? = null
 
     fun sendMessage(prompt: String) {
         viewModelScope.launch {
@@ -599,6 +607,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
     //================================================================
 
+    private fun playResponse(responseText: String) {
+        val selectedVoice = voiceViewModel.selectedVoice.value ?: "default"
+        witAiClient.synthesizeSpeech(responseText, "Rubie") { isSuccessful ->
+            if (isSuccessful) {
+                Log.d("playResponse", "Audio playback started successfully.")
+            } else {
+                Log.e("playResponse", "Failed to synthesize speech.")
+                messageList.add(MessageModel("TTS failed. Please try again.", "model"))
+            }
+        }
+    }
 
     private fun fallbackToGenerativeModel(prompt: String) {
         viewModelScope.launch {
@@ -611,7 +630,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
                 val response = chat.sendMessage(prompt)
                 messageList.removeAt(messageList.lastIndex)
-                messageList.add(MessageModel(response.text.toString().trimEnd('\n'), "model"))
+                messageList.add(MessageModel(response.text?.trimEnd('\n') ?: "", "model"))
+
+                // Play the synthesized response
+                playResponse(response.text?.trimEnd('\n') ?: "")
                 Log.d("ChatViewModel", "Response: ${response.text}")
             } catch (e: Exception) {
                 messageList.removeAt(messageList.lastIndex)
@@ -620,5 +642,4 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
-
 }

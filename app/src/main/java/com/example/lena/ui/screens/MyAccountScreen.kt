@@ -1,7 +1,6 @@
 package com.example.lena.ui.screens
 
 
-import android.R.attr.start
 import android.app.Activity
 import android.content.Context
 import android.util.Log
@@ -14,7 +13,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -29,19 +27,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
@@ -49,9 +42,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -148,9 +139,13 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel, 
 
     fun playVoiceSample(context: Context, voiceDisplayName: String) {
         val resId = when (voiceDisplayName) {
-            "Rubie" -> R.raw.en_us_wit_rubie // Replace with your actual resource IDs
-            "Cooper" -> R.raw.en_us_wit_cooper
-            "Vampire" -> R.raw.en_us_wit_vampire
+            "Rubie" -> R.raw.wit_rubie // Replace with your actual resource IDs
+            "Cooper" -> R.raw.wit_cooper
+            "Vampire" -> R.raw.wit_vampire
+            "Kenyan Accent" -> R.raw.wit_kenyan_accent
+            "British Butler" -> R.raw.wit_british_butler
+            "Cartoon Villain" -> R.raw.wit_cartoon_villain
+            "Cockney Accent" -> R.raw.wit_cockney_accent
             else -> null // Default sample if no match found
         }
 

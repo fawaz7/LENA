@@ -3,6 +3,7 @@ package com.example.lena.viewModels
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.lena.Data.Voices
 import com.example.lena.utils.WitAiClient
@@ -30,5 +31,15 @@ class VoiceViewModel(private val witAiClient: WitAiClient) : ViewModel() {
 
     fun changeSelectedVoice(voiceDisplayName: String) {
         selectedVoice.value = Voices.allVoices.find { it.displayName == voiceDisplayName }?.name
+    }
+
+    class Factory(private val witAiClient: WitAiClient) : ViewModelProvider.Factory {
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            if (modelClass.isAssignableFrom(VoiceViewModel::class.java)) {
+                @Suppress("UNCHECKED_CAST")
+                return VoiceViewModel(witAiClient) as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class")
+        }
     }
 }
