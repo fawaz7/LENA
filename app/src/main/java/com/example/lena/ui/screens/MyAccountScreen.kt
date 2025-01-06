@@ -3,9 +3,9 @@ package com.example.lena.ui.screens
 
 import android.app.Activity
 import android.content.Context
+import android.media.MediaPlayer
 import android.util.Log
 import android.widget.Toast
-import android.media.MediaPlayer
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -126,8 +126,8 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel, 
 
     val availableVoices = voiceViewModel.availableVoices
     val selectedVoice = voiceViewModel.selectedVoice
-    var tempSelectedVoice by remember { mutableStateOf(selectedVoice.value) }
-    var isTtsDisabled by remember { mutableStateOf(false) }
+    var tempSelectedVoice by remember { mutableStateOf(uiState.selectedVoice) }
+    var isTtsDisabled by remember { mutableStateOf(uiState.isTtsDisabled) }
     var showDialog by remember { mutableStateOf(false) }
     var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
 
@@ -599,20 +599,21 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel, 
                                     )
                                     .padding(8.dp)
                                     .clickable(enabled = !isTtsDisabled) {
-                                        tempSelectedVoice = selectedVoice.value // Store the current selection temporarily
+                                        tempSelectedVoice = selectedVoice.value.toString() // Store the current selection temporarily
                                         showDialog = true // Open the dialog
                                     }.widthIn(min = 200.dp, max = 200.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center
                             ) {
                                 Text(
-                                    text = selectedVoice.value?.let { voiceName ->
+                                    text = uiState.selectedVoice.let { voiceName ->
                                         Voices.allVoices.find { it.name == voiceName }?.displayName ?: "Select Voice"
-                                    } ?: "Select Voice",
+                                    },
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = if (!isTtsDisabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                                     modifier = Modifier.align(Alignment.CenterVertically)
                                 )
+                                Log.d("selectedVoice", selectedVoice.value.toString())
 
                             }
 
@@ -620,7 +621,7 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel, 
                             if (showDialog) {
                                 Dialog(onDismissRequest = {
                                     showDialog = false
-                                    tempSelectedVoice = selectedVoice.value // Reset tempSelectedVoice if dialog is dismissed
+                                    tempSelectedVoice = uiState.selectedVoice // Reset tempSelectedVoice if dialog is dismissed
                                 }) {
                                     Surface(
                                         modifier = Modifier.size(300.dp),
@@ -666,7 +667,8 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel, 
                                             Spacer(modifier = Modifier.height(8.dp))
                                             Button(
                                                 onClick = {
-                                                    voiceViewModel.changeSelectedVoice(tempSelectedVoice!!) // Update the selected voice
+                                                    voiceViewModel.changeSelectedVoice(tempSelectedVoice) // Update the selected voice
+                                                    authViewModel.updateVoiceModel(tempSelectedVoice) // Save the selected voice to Firebase
                                                     showDialog = false
 
                                                     // Here you can add the action for previewing the voice if needed
@@ -688,9 +690,10 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel, 
                                     checked = isTtsDisabled,
                                     onCheckedChange = { isDisabled ->
                                         isTtsDisabled = isDisabled
+                                        authViewModel.updateTtsStatus(isDisabled)
                                     }
                                 )
-                                Text("Disable Text-to-Speech")
+                                Text("Disable Text to Speech")
                             }
                         }
                     }

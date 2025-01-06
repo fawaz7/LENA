@@ -61,15 +61,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.example.lena.ui.rememberImeState
 import com.example.lena.ui.theme.Gray800
 import com.example.lena.ui.theme.Gray900
-import com.example.lena.ui.theme.LENATheme
 import com.example.lena.viewModels.AuthEvent
 import com.example.lena.viewModels.AuthState
 import com.example.lena.viewModels.AuthViewModel
@@ -284,11 +281,3 @@ fun ForgotPasswordScreen(
 
 }
 
-@Preview(showSystemUi = true)
-@Composable
-fun ForgotPassPreview(){
-    LENATheme(darkTheme = true) {
-        ForgotPasswordScreen(navController = rememberNavController(), AuthViewModel())
-
-    }
-}

@@ -3,6 +3,7 @@ package com.example.lena.viewModels
 import android.app.Application
 import android.util.Log
 import android.util.Patterns
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -61,6 +63,8 @@ data class AuthUiState(
     val infoMessage: String = "",
     val isCurrentPasswordWrong: Boolean = false,
     val currentPasswordError: String = "",
+    val selectedVoice: String = "",
+    val isTtsDisabled: Boolean = false,
 )
 
 sealed class AuthState{
@@ -79,10 +83,12 @@ enum class toastType {
     Info, Error
 }
 
-class AuthViewModel : ViewModel() {
+class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val fStore: FirebaseFirestore = FirebaseFirestore.getInstance()
+
+
     private var lastVerificationEmailSentTime: Long = 0
     private var toastShown = false
 
@@ -93,7 +99,7 @@ class AuthViewModel : ViewModel() {
     val authEvent: SharedFlow<AuthEvent> = _authEvent
 
     private val _uiState = MutableStateFlow(AuthUiState())
-    val uiState: StateFlow<AuthUiState> = _uiState
+    val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
     companion object {
         private const val VERIFICATION_EMAIL_COOLDOWN = 2 * 60 * 1000 // 2 minutes in milliseconds
@@ -103,6 +109,39 @@ class AuthViewModel : ViewModel() {
         checkAuthStatus()
         fetchUserInfo()
         fetchVerificationStatus()
+        setupRealtimeListener()
+    }
+
+    private fun setupRealtimeListener() {
+        val user = auth.currentUser
+        user?.let {
+            val userId = it.uid
+            val userRef = fStore.collection("Users").document(userId)
+            userRef.addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    Log.w("AuthViewModel", "Listen failed.", e)
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null && snapshot.exists()) {
+                    val firstName = snapshot.getString("firstName") ?: ""
+                    val email = snapshot.getString("email") ?: ""
+                    val selectedVoice = snapshot.getString("selectedVoice") ?: "Rubie"
+                    val isTtsDisabled = snapshot.getBoolean("isTtsDisabled") ?: false
+
+                    _uiState.update { state ->
+                        state.copy(
+                            authorizedUserFirstName = firstName,
+                            authorizedUserEmail = email,
+                            selectedVoice = selectedVoice,
+                            isTtsDisabled = isTtsDisabled
+                        )
+                    }
+                } else {
+                    Log.d("AuthViewModel", "Current data: null")
+                }
+            }
+        }
     }
 
     fun checkAuthStatus() {
@@ -238,12 +277,13 @@ class AuthViewModel : ViewModel() {
                     val user = mapOf(
                         "firstName" to _uiState.value.firstName.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
                         "lastName" to _uiState.value.lastName.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
-                        "email" to _uiState.value.signUpEmail.lowercase().trim()
+                        "email" to _uiState.value.signUpEmail.lowercase().trim(),
+                        "selectedVoice" to "Rubie",
+                        "isTtsDisabled" to false
                     )
                     documentReference.set(user).addOnSuccessListener {
                         auth.currentUser?.sendEmailVerification()?.addOnCompleteListener { verificationTask ->
                             if (verificationTask.isSuccessful) {
-                                /*TODO Verification email time*/
                                 toastMessage(toastType.Info, "Email Verification sent")
                                 _authState.value = AuthState.Authenticated
                             } else {
@@ -543,6 +583,16 @@ class AuthViewModel : ViewModel() {
                     _uiState.update { state -> state.copy(authorizedUserFirstName =  firstName) }
                     val email = document.getString("email") ?: ""
                     _uiState.update { state -> state.copy(authorizedUserEmail =  email) }
+
+                    // Fetch voice settings
+                    val selectedVoice = document.getString("selectedVoice") ?: "Rubie"
+                    val isTtsDisabled = document.getBoolean("isTtsDisabled") ?: false
+                    _uiState.update { state ->
+                        state.copy(
+                            selectedVoice = selectedVoice,
+                            isTtsDisabled = isTtsDisabled
+                        )
+                    }
                 }
             }.addOnFailureListener { exception ->
                 Log.w("AuthViewModel", "Error getting documents: ", exception)
@@ -615,7 +665,6 @@ class AuthViewModel : ViewModel() {
                 if (success) {
                     currentUser.verifyBeforeUpdateEmail(newEmail).addOnCompleteListener { task ->
                         if (task.isSuccessful) {
-                            /*TODO Verification email time*/
                             toastMessage(toastType.Info, "Email verification sent")
                             callback(true)
                             signOut()
@@ -717,9 +766,49 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    //====================================================================================--> Voice Settings
 
+    fun updateVoiceModel(selectedVoice: String) {
+        val user = auth.currentUser
+        if (user != null) {
+            val userRef = fStore.collection("Users").document(user.uid)
 
+            userRef.update("selectedVoice", selectedVoice)
+                .addOnSuccessListener {
+                    // Update local UI state
+                    _uiState.update { state ->
+                        state.copy(selectedVoice = selectedVoice)
+                    }
+                }
+                .addOnFailureListener { e ->
+                    toastMessage(toastType.Error, "Failed to update voice model: ${e.message}")
+                }
+        } else {
+            toastMessage(toastType.Error, "User not authenticated")
+        }
+    }
 
+    fun updateTtsStatus(isTtsDisabled: Boolean) {
+        val user = auth.currentUser
+        if (user != null) {
+            val userRef = fStore.collection("Users").document(user.uid)
+
+            userRef.update("isTtsDisabled", isTtsDisabled)
+                .addOnSuccessListener {
+                    // Update local UI state
+                    _uiState.update { state ->
+                        state.copy(isTtsDisabled = isTtsDisabled)
+                    }
+                }
+                .addOnFailureListener { e ->
+                    toastMessage(toastType.Error, "Failed to update TTS status: ${e.message}")
+                }
+        } else {
+            toastMessage(toastType.Error, "User not authenticated")
+        }
+    }
+
+    // TODO
     //====================================================================================--> Miscellaneous
     fun signOut(navController: NavController? = null) {
         auth.signOut()
@@ -792,11 +881,13 @@ class AuthViewModel : ViewModel() {
             }
         }
     }
+
+
     class Factory(private val application: Application) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(AuthViewModel::class.java)) {
-                return AuthViewModel() as T
+                return AuthViewModel(application) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }

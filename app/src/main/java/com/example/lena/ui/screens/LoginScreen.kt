@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -66,17 +65,14 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.example.lena.R
 import com.example.lena.Screens
 import com.example.lena.ui.rememberImeState
 import com.example.lena.ui.theme.Gray800
 import com.example.lena.ui.theme.Gray900
-import com.example.lena.ui.theme.LENATheme
 import com.example.lena.viewModels.AuthEvent
 import com.example.lena.viewModels.AuthState
 import com.example.lena.viewModels.AuthViewModel
@@ -342,13 +338,3 @@ fun LoginScreen(
     }
 }
 
-@Preview(showSystemUi = true)
-@Composable
-fun LoginScreenPreview() {
-    val navController = rememberNavController()
-    LENATheme(darkTheme = true) {
-        // Provide mock dependencies to AuthViewModel
-        val authViewModel = AuthViewModel()
-        LoginScreen(navController, authViewModel, modifier = Modifier)
-    }
-}

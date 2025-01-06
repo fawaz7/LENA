@@ -1,5 +1,6 @@
 package com.example.lena.ui.screens
 
+import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -45,6 +47,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.lena.ui.theme.Gray800
 import com.example.lena.ui.theme.Gray900
 import com.example.lena.viewModels.AuthState
@@ -63,14 +66,18 @@ internal fun ConfirmationDialog(
     dismissText: String,
     confirmColor: Color = MaterialTheme.colorScheme.onSurface
 ) {
-    val authState = AuthViewModel().authState.observeAsState()
+    val authViewModel: AuthViewModel = viewModel(
+        factory = AuthViewModel.Factory(LocalContext.current.applicationContext as Application)
+    )
+    val authState: AuthState? by authViewModel.authState.observeAsState()
+
     AlertDialog(
         onDismissRequest = { onDismiss() },
         title = { Text(text = title) },
         text = { Text(text = message) },
         confirmButton = {
             TextButton(onClick = { onConfirm() }) {
-                if (authState.value == AuthState.Loading) {
+                if (authState == AuthState.Loading) {
                     CircularProgressIndicator(
                         color = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(20.dp)
@@ -107,7 +114,10 @@ internal fun InputConfirmationDialog(
 ) {
     var input by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    val authState = AuthViewModel().authState.observeAsState()
+    val authViewModel: AuthViewModel = viewModel(
+        factory = AuthViewModel.Factory(LocalContext.current.applicationContext as Application)
+    )
+    val authState: AuthState? by authViewModel.authState.observeAsState()
     AlertDialog(
         onDismissRequest = { onDismiss() },
         title = { Text(text = title) },
@@ -155,7 +165,7 @@ internal fun InputConfirmationDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(input) }) {
-                if (authState.value == AuthState.Loading) {
+                if (authState == AuthState.Loading) {
                     CircularProgressIndicator(
                         color = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(20.dp)
@@ -204,8 +214,11 @@ internal fun SubmitButton(
         modifier = modifier.width(buttonWidth),
         shape = RoundedCornerShape(cornerRadius)
     ) {
-        val authState = AuthViewModel().authState.observeAsState()
-        if (authState.value == AuthState.Loading) {
+        val authViewModel: AuthViewModel = viewModel(
+            factory = AuthViewModel.Factory(LocalContext.current.applicationContext as Application)
+        )
+        val authState: AuthState? by authViewModel.authState.observeAsState()
+        if (authState == AuthState.Loading) {
             CircularProgressIndicator(
                 color = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.size(20.dp)

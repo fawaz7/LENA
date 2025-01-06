@@ -9,16 +9,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.LocationManager
-import android.media.MediaPlayer
 import android.net.Uri
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.provider.Settings
-import android.util.Base64
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
-import androidx.core.app.ActivityCompat
-import androidx.core.app.ComponentActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -49,15 +45,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private var systemInstruction: Content? = null
+    private var selectedVoice: String = "Rubie"
 
     init {
-        // Collect the first name when it updates
+        // Collect the first name and selected voice when they update
         viewModelScope.launch {
             authViewModel.uiState.collect { state ->
                 val firstName = state.authorizedUserFirstName
                 if (firstName.isNotEmpty()) {
                     updateSystemInstruction(firstName)
                 }
+                selectedVoice = state.selectedVoice // Update the selected voice
             }
         }
     }
@@ -84,13 +82,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private val witAiClient = WitAiClient(BuildConfig.WIT_AI_TOKEN)
     private val weatherViewModel = WeatherViewModel()
-
-    private val voiceViewModel: VoiceViewModel by lazy {
-        val factory = VoiceViewModel.Factory(witAiClient)
-        ViewModelProvider(ViewModelStore(), factory)[VoiceViewModel::class.java]
-    }
-
-    private var mediaPlayer: MediaPlayer? = null
 
     fun sendMessage(prompt: String) {
         viewModelScope.launch {
@@ -161,6 +152,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         } catch (e: Exception) {
             Log.e("ChatViewModel", "Error handling control device feature: ${e.message}")
             messageList.add(MessageModel("Error handling device feature", "model"))
+            playResponse("Error handling device feature".trimEnd('\n'))
         }
     }
 
@@ -170,9 +162,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         when (action.lowercase()) {
             "on" -> {
                 if (wifiManager.wifiState != WifiManager.WIFI_STATE_ENABLED && wifiManager.wifiState != WifiManager.WIFI_STATE_ENABLING) {
-                    messageList.add(MessageModel("Opening WiFi Settings to turn ON", "model"))
+                    messageList.add(MessageModel("Opening WiFi Settings.", "model"))
+                    playResponse("Opening WiFi Settings.".trimEnd('\n'))
                     viewModelScope.launch {
-                        delay(1000)  // 1 Second delay
+                        delay(1500)  // 1.5 Second delay
                         val intent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
@@ -181,13 +174,15 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
                 } else {
                     messageList.add(MessageModel("WiFi is already ON", "model"))
+                    playResponse("WiFi is already ON".trimEnd('\n'))
                 }
             }
             "off" -> {
                 if (wifiManager.wifiState != WifiManager.WIFI_STATE_DISABLED && wifiManager.wifiState != WifiManager.WIFI_STATE_DISABLING) {
-                    messageList.add(MessageModel("Opening WiFi Settings to turn OFF", "model"))
+                    messageList.add(MessageModel("Opening WiFi Settings.", "model"))
+                    playResponse("Opening WiFi Settings.".trimEnd('\n'))
                     viewModelScope.launch {
-                        delay(1000)  // 1 Second delay
+                        delay(1500)  // 1.5 Second delay
                         val intent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
@@ -196,16 +191,29 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
                 } else {
                     messageList.add(MessageModel("WiFi is already OFF", "model"))
+                    playResponse("WiFi is already OFF".trimEnd('\n'))
                 }
             }
             "check" -> {
                 when (wifiManager.wifiState) {
-                    WifiManager.WIFI_STATE_ENABLED -> messageList.add(MessageModel("WiFi is ON", "model"))
-                    WifiManager.WIFI_STATE_DISABLED -> messageList.add(MessageModel("WiFi is OFF", "model"))
-                    else -> messageList.add(MessageModel("WiFi state is UNKNOWN", "model"))
+                    WifiManager.WIFI_STATE_ENABLED -> {
+                        messageList.add(MessageModel("WiFi is ON", "model"))
+                        playResponse("WiFi is ON".trimEnd('\n'))
+                    }
+                    WifiManager.WIFI_STATE_DISABLED -> {
+                        messageList.add(MessageModel("WiFi is OFF", "model"))
+                        playResponse("WiFi is OFF".trimEnd('\n'))
+                    }
+                    else -> {
+                        messageList.add(MessageModel("WiFi state is UNKNOWN", "model"))
+                        playResponse("WiFi state is UNKNOWN".trimEnd('\n'))
+                    }
                 }
             }
-            else -> messageList.add(MessageModel("Unknown action for WiFi", "model"))
+            else -> {
+                messageList.add(MessageModel("Unknown action for WiFi", "model"))
+                playResponse("Unknown action for WiFi".trimEnd('\n'))
+            }
         }
     }
 
@@ -215,6 +223,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
         if (bluetoothAdapter == null) {
             messageList.add(MessageModel("Bluetooth not supported on this device", "model"))
+            playResponse("Bluetooth not supported on this device".trimEnd('\n'))
             return
         }
 
@@ -222,8 +231,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED
         ) {
             messageList.add(MessageModel("Please grant Bluetooth permissions in the settings", "model"))
+            playResponse("Please grant Bluetooth permissions in the settings".trimEnd('\n'))
             viewModelScope.launch {
-                delay(1000)  // 1 Second delay
+                delay(1500)  // 1.5 Second delay
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     data = Uri.fromParts("package", context.packageName, null)
@@ -237,8 +247,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             "on" -> {
                 if (!bluetoothAdapter.isEnabled) {
                     messageList.add(MessageModel("Requesting to turn Bluetooth ON", "model"))
+                    playResponse("Requesting to turn Bluetooth ON".trimEnd('\n'))
                     viewModelScope.launch {
-                        delay(1000)  // 1 Second delay
+                        delay(1500)  // 1.5 Second delay
                         val intent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE).apply {
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
@@ -246,13 +257,15 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 } else {
                     messageList.add(MessageModel("Bluetooth is already ON", "model"))
+                    playResponse("Bluetooth is already ON".trimEnd('\n'))
                 }
             }
             "off" -> {
                 if (bluetoothAdapter.isEnabled) {
                     messageList.add(MessageModel("Please turn off Bluetooth manually in settings", "model"))
+                    playResponse("Please turn off Bluetooth manually in settings".trimEnd('\n'))
                     viewModelScope.launch {
-                        delay(1000)  // 1 Second delay
+                        delay(1500)  // 1.5 Second delay
                         val intent = Intent(Settings.ACTION_BLUETOOTH_SETTINGS).apply {
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
@@ -260,10 +273,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 } else {
                     messageList.add(MessageModel("Bluetooth is already OFF", "model"))
+                    playResponse("Bluetooth is already OFF".trimEnd('\n'))
                 }
             }
             "check" -> {
-                messageList.add(MessageModel(if (bluetoothAdapter.isEnabled) "Bluetooth is ON" else "Bluetooth is OFF", "model"))
+                messageList.add(MessageModel(if (bluetoothAdapter.isEnabled) "Bluetooth is turned On" else "Bluetooth is turned Off", "model"))
+                playResponse(if (bluetoothAdapter.isEnabled) "Bluetooth is turned On".trimEnd('\n') else "Bluetooth is turned Off".trimEnd('\n'))
             }
             else -> messageList.add(MessageModel("Unknown action for Bluetooth", "model"))
         }
@@ -273,6 +288,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         when (action.lowercase()) {
             "on" -> {
                 messageList.add(MessageModel("Opening Location Settings to turn ON", "model"))
+                playResponse("Opening Location Settings to turn ON".trimEnd('\n'))
                 viewModelScope.launch {
                     delay(1000)  // 1 Second delay
                     val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS).apply {
@@ -283,6 +299,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
             "off" -> {
                 messageList.add(MessageModel("Opening Location Settings to turn OFF", "model"))
+                playResponse("Opening Location Settings to turn OFF".trimEnd('\n'))
                 viewModelScope.launch {
                     delay(1000)  // 1 Second delay
                     val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS).apply {
@@ -294,9 +311,13 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             "check" -> {
                 val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
                 val isLocationEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
-                messageList.add(MessageModel(if (isLocationEnabled) "Location is ON" else "Location is OFF", "model"))
+                messageList.add(MessageModel(if (isLocationEnabled) "Location Service is turned On" else "Location Service is turned Off", "model"))
+                playResponse(if (isLocationEnabled) "Location Service is turned On".trimEnd('\n') else "Location Service is turned Off".trimEnd('\n'))
             }
-            else -> messageList.add(MessageModel("Unknown action for Location Service", "model"))
+            else -> {
+                messageList.add(MessageModel("Unknown action for Location Service", "model"))
+                playResponse("Unknown action for Location Service".trimEnd('\n'))
+            }
         }
     }
 
@@ -307,6 +328,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             "on" -> {
                 if (!isAirplaneModeOn) {
                     messageList.add(MessageModel("Please enable Airplane mode manually", "model"))
+                    playResponse("Please enable Airplane mode manually".trimEnd('\n'))
                     viewModelScope.launch {
                         delay(1000)  // 1 Second delay
                         val intent = Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS).apply {
@@ -316,11 +338,13 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 } else {
                     messageList.add(MessageModel("Airplane mode is already ON", "model"))
+                    playResponse("Airplane mode is already ON".trimEnd('\n'))
                 }
             }
             "off" -> {
                 if (isAirplaneModeOn) {
                     messageList.add(MessageModel("Please disable Airplane mode manually", "model"))
+                    playResponse("Please disable Airplane mode manually".trimEnd('\n'))
                     viewModelScope.launch {
                         delay(1000)  // 1 Second delay
                         val intent = Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS).apply {
@@ -330,12 +354,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 } else {
                     messageList.add(MessageModel("Airplane mode is already OFF", "model"))
+                    playResponse("Airplane mode is already OFF".trimEnd('\n'))
                 }
             }
             "check" -> {
                 messageList.add(MessageModel(if (isAirplaneModeOn) "Airplane mode is ON" else "Airplane mode is OFF", "model"))
+                playResponse(if (isAirplaneModeOn) "Airplane mode is ON".trimEnd('\n') else "Airplane mode is OFF".trimEnd('\n'))
             }
-            else -> messageList.add(MessageModel("Unknown action for Airplane mode", "model"))
+            else -> {
+                messageList.add(MessageModel("Unknown action for Airplane mode", "model"))
+                playResponse("Unknown action for Airplane mode".trimEnd('\n'))
+            }
         }
     }
 
@@ -358,16 +387,22 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             "on" -> {
                 notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
                 messageList.add(MessageModel("Do Not Disturb mode turned ON", "model"))
+                playResponse("Do Not Disturb mode turned ON".trimEnd('\n'))
             }
             "off" -> {
                 notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
                 messageList.add(MessageModel("Do Not Disturb mode turned OFF", "model"))
+                playResponse("Do Not Disturb mode turned OFF".trimEnd('\n'))
             }
             "check" -> {
                 val isDoNotDisturbOn = notificationManager.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_NONE
                 messageList.add(MessageModel(if (isDoNotDisturbOn) "Do Not Disturb mode is ON" else "Do Not Disturb mode is OFF", "model"))
+                playResponse(if (isDoNotDisturbOn) "Do Not Disturb mode is ON".trimEnd('\n') else "Do Not Disturb mode is OFF".trimEnd('\n'))
             }
-            else -> messageList.add(MessageModel("Unknown action for Do Not Disturb mode", "model"))
+            else -> {
+                messageList.add(MessageModel("Unknown action for Do Not Disturb mode", "model"))
+                playResponse("Unknown action for Do Not Disturb mode".trimEnd('\n'))
+            }
         }
     }
 
@@ -392,9 +427,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 if (lat != null && lon != null) {
                     weatherViewModel.fetchWeather(lat, lon, datetime, forecastType) { weatherResult ->
                         messageList.add(MessageModel(weatherResult, "model"))
+                        playResponse(weatherResult.trimEnd('\n'))
                     }
                 } else {
                     messageList.add(MessageModel("Unable to determine coordinates for $locationName", "model"))
+                    playResponse("\"Unable to determine coordinates for $locationName".trimEnd('\n'))
                 }
             } else {
                 // If no location is specified, use the current location
@@ -403,6 +440,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         } catch (e: Exception) {
             Log.e("ChatViewModel", "Error handling weather query: ${e.message}")
             messageList.add(MessageModel("Error handling weather query", "model"))
+            playResponse("Error handling weather query".trimEnd('\n'))
         }
     }
 
@@ -426,9 +464,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 if (lat != null && lon != null) {
                     weatherViewModel.checkWeatherCondition(lat, lon, datetime, forecastType, condition) { weatherResult ->
                         messageList.add(MessageModel(weatherResult, "model"))
+                        playResponse(weatherResult.trimEnd('\n'))
                     }
                 } else {
                     messageList.add(MessageModel("Unable to determine coordinates for $locationName", "model"))
+                    playResponse("Unable to determine coordinates for $locationName".trimEnd('\n'))
                 }
             } else {
                 // If no location is specified, use the current location
@@ -437,6 +477,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         } catch (e: Exception) {
             Log.e("ChatViewModel", "Error handling weather condition query: ${e.message}")
             messageList.add(MessageModel("Error handling weather condition query", "model"))
+            playResponse("Error handling weather condition query".trimEnd('\n'))
         }
     }
 
@@ -445,9 +486,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             if (location != null) {
                 weatherViewModel.fetchWeather(location.latitude, location.longitude, datetime, forecastType) { weatherResult ->
                     messageList.add(MessageModel(weatherResult, "model"))
+                    playResponse(weatherResult.trimEnd('\n'))
                 }
             } else {
                 messageList.add(MessageModel("Unable to determine current location", "model"))
+                playResponse("Unable to determine current location".trimEnd('\n'))
             }
         }
     }
@@ -457,9 +500,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             if (location != null) {
                 weatherViewModel.checkWeatherCondition(location.latitude, location.longitude, datetime, forecastType, condition) { weatherResult ->
                     messageList.add(MessageModel(weatherResult, "model"))
+                    playResponse(weatherResult.trimEnd('\n'))
                 }
             } else {
                 messageList.add(MessageModel("Unable to determine current location", "model"))
+                playResponse("Unable to determine current location".trimEnd('\n'))
             }
         }
     }
@@ -482,15 +527,18 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 Log.d("SetReminderHandler", "No datetime specified, setting as all-day reminder")
                 reminderViewModel.setAllDayReminder(context, accountName, messageBody) { result ->
                     messageList.add(MessageModel(result, "model"))
+                    playResponse(result.trimEnd('\n'))
                 }
             } else {
                 reminderViewModel.setReminder(context, accountName, messageBody, datetime) { result ->
                     messageList.add(MessageModel(result, "model"))
+                    playResponse(result.trimEnd('\n'))
                 }
             }
         } catch (e: Exception) {
             Log.e("SetReminderHandler", "Error setting reminder", e)
             messageList.add(MessageModel("Error setting reminder", "model"))
+            playResponse("Error setting reminder".trimEnd('\n'))
         }
     }
 
@@ -507,6 +555,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val reminderViewModel = ReminderViewModel()
         reminderViewModel.setRecurringReminder(context, accountName, messageBody, datetime, frequency) { result ->
             messageList.add(MessageModel(result, "model"))
+            playResponse(result.trimEnd('\n'))
         }
     }
 
@@ -520,6 +569,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             val reminderViewModel = ReminderViewModel()
             reminderViewModel.checkReminder(context, datetime) { result ->
                 messageList.add(MessageModel(result, "model"))
+                playResponse(result.trimEnd('\n'))
             }
         } catch (e: Exception) {
             Log.e("CheckReminderHandler", "Error checking reminders", e)
@@ -537,6 +587,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
             alarmViewModel.setAlarm(context, datetime, isRecurring) { result ->
                 messageList.add(MessageModel(result, "model"))
+                playResponse(result.trimEnd('\n'))
+
             }
         } catch (e: Exception) {
             Log.e("ChatViewModel", "Error setting alarm", e)
@@ -594,8 +646,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
             // Start the activity
             try {
-                context.startActivity(mapIntent)
                 messageList.add(MessageModel("Showing directions to $destination", "model"))
+                playResponse("Showing directions to $destination".trimEnd('\n'))
+                viewModelScope.launch {
+                    delay(1500)  // 1.5 Second delay
+                    val intent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                }
+                context.startActivity(mapIntent)
+
             } catch (e: Exception) {
                 Log.e("GetDirectionsHandler", "Error starting map intent", e)
                 messageList.add(MessageModel("Error starting map: ${e.message}", "model"))
@@ -608,13 +669,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     //================================================================
 
     private fun playResponse(responseText: String) {
-        val selectedVoice = voiceViewModel.selectedVoice.value ?: "default"
-        witAiClient.synthesizeSpeech(responseText, "Rubie") { isSuccessful ->
+        witAiClient.synthesizeSpeech(responseText, selectedVoice) { isSuccessful ->
             if (isSuccessful) {
                 Log.d("playResponse", "Audio playback started successfully.")
             } else {
                 Log.e("playResponse", "Failed to synthesize speech.")
-                messageList.add(MessageModel("TTS failed. Please try again.", "model"))
             }
         }
     }

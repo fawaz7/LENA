@@ -1,16 +1,13 @@
 package com.example.lena.utils
 
-import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
 import android.net.Uri
 import android.util.Log
-import okhttp3.*
 import com.google.gson.Gson
+import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.RequestBody.Companion.toRequestBody
 import okio.BufferedSink
 import java.io.IOException
 
