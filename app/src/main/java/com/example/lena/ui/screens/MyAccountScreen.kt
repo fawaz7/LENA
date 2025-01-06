@@ -1,8 +1,12 @@
 package com.example.lena.ui.screens
 
+
+import android.R.attr.start
 import android.app.Activity
+import android.content.Context
 import android.util.Log
 import android.widget.Toast
+import android.media.MediaPlayer
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -10,45 +14,63 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-
-
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -68,29 +90,30 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
+import com.example.lena.Data.Voices
 import com.example.lena.R
 import com.example.lena.Screens
 import com.example.lena.ui.rememberImeState
 import com.example.lena.ui.theme.DarkSuccess
-import com.example.lena.ui.theme.LENATheme
 import com.example.lena.ui.theme.LightSuccess
 import com.example.lena.viewModels.AuthEvent
 import com.example.lena.viewModels.AuthState
 import com.example.lena.viewModels.AuthViewModel
+import com.example.lena.viewModels.VoiceViewModel
 import kotlinx.coroutines.launch
 
 
 enum class SelectedOption {
-    ChangeEmail, ChangePassword,
+    ChangeEmail, ChangePassword, ChangeTtsVoice
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) {
+fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel, voiceViewModel: VoiceViewModel ) {
 
     val context = LocalContext.current
     val activity = context as? Activity
@@ -109,6 +132,35 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
     val changePasswordDialog = remember { mutableStateOf(false) }
     val confirmDeleteDialog = remember { mutableStateOf(false) }
     val uiState by authViewModel.uiState.collectAsState()
+
+    val availableVoices = voiceViewModel.availableVoices
+    val selectedVoice = voiceViewModel.selectedVoice
+    var tempSelectedVoice by remember { mutableStateOf(selectedVoice.value) }
+    var isTtsDisabled by remember { mutableStateOf(false) }
+    var showDialog by remember { mutableStateOf(false) }
+    var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            mediaPlayer?.release()
+        }
+    }
+
+    fun playVoiceSample(context: Context, voiceDisplayName: String) {
+        val resId = when (voiceDisplayName) {
+            "Rubie" -> R.raw.en_us_wit_rubie // Replace with your actual resource IDs
+            "Cooper" -> R.raw.en_us_wit_cooper
+            "Vampire" -> R.raw.en_us_wit_vampire
+            else -> null // Default sample if no match found
+        }
+
+        resId?.let {
+            mediaPlayer?.release() // Release any previous MediaPlayer instance
+            mediaPlayer = MediaPlayer.create(context, it)
+            mediaPlayer?.start()
+        }
+    }
+
 
     fun isDialogsOff(): Boolean{
         if (
@@ -184,7 +236,9 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
                 },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(modifier = Modifier.height(imeSpacer1).fillMaxWidth())
+            Spacer(modifier = Modifier
+                .height(imeSpacer1)
+                .fillMaxWidth())
 
             // Greetings Section
             AnimatedVisibility(
@@ -193,7 +247,9 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
                 exit = fadeOut()
             ) {
                 Column(
-                    Modifier.align(Alignment.CenterHorizontally).padding(horizontal = 32.dp)
+                    Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(horizontal = 32.dp)
                 ) {
                     Text(
                         text = "Hi ${uiState.authorizedUserFirstName}",
@@ -212,9 +268,11 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
                 }
             }
             FadedHorizontalDivider(topPadding = 16.dp, bottomPadding = 8.dp)
-            Spacer(modifier = Modifier.height(imeSpacer2).fillMaxWidth())
+            Spacer(modifier = Modifier
+                .height(imeSpacer2)
+                .fillMaxWidth())
 
-            //=================================================================================--> Change Email/Password Options Section
+            //=================================================================================--> Change Email/Password/TTS Options Section
             Box(
                 Modifier.fillMaxSize(),
             ) {
@@ -400,7 +458,10 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
                                 modifier = Modifier
                                     .focusRequester(passwordFocusRequester)
                                     .onFocusChanged { focusState ->
-                                        authViewModel.onPasswordFocusChanged(focusState.isFocused, Screens.MyAccountScreen)
+                                        authViewModel.onPasswordFocusChanged(
+                                            focusState.isFocused,
+                                            Screens.MyAccountScreen
+                                        )
                                     },
                                 trailingIcon = {
                                     IconButton(onClick = { authViewModel.togglePasswordVisibility() }) {
@@ -442,7 +503,10 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
                                     .onFocusChanged { focusState ->
                                         isRePasswordFocused = focusState.isFocused
                                         if (!focusState.isFocused) {
-                                            authViewModel.onRePasswordChange(uiState.rePassword, Screens.MyAccountScreen)
+                                            authViewModel.onRePasswordChange(
+                                                uiState.rePassword,
+                                                Screens.MyAccountScreen
+                                            )
                                         }
                                     },
                                 trailingIcon = {
@@ -509,6 +573,129 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel) 
                                     confirmationText = "Yes, Change Password",
                                     dismissText = "Cancel",
                                 )
+                            }
+                        }
+                    }
+                    //============================================--> TTS options
+                    Text(
+                        text = "Change assistant's voice",
+                        fontWeight = if (selectedOption.value == SelectedOption.ChangeTtsVoice) FontWeight.W500 else FontWeight.Light,
+                        fontSize = 20.sp,
+                        modifier = Modifier.clickable {
+                            selectedOption.value =
+                                if (selectedOption.value == SelectedOption.ChangeTtsVoice) null else SelectedOption.ChangeTtsVoice
+                        }
+                    )
+                    AnimatedVisibility(
+                        visible = selectedOption.value == SelectedOption.ChangeTtsVoice,
+                        enter = slideInVertically(initialOffsetY = { -it/2 }) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { -it/2 }) + fadeOut()
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            // Show Dialog for Voice Selection
+                            Row(
+                                modifier = Modifier
+                                    .wrapContentSize()
+                                    .border(
+                                        width = 0.5.dp,
+                                        color = if (!isTtsDisabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                                        shape = MaterialTheme.shapes.small
+                                    )
+                                    .padding(8.dp)
+                                    .clickable(enabled = !isTtsDisabled) {
+                                        tempSelectedVoice = selectedVoice.value // Store the current selection temporarily
+                                        showDialog = true // Open the dialog
+                                    }.widthIn(min = 200.dp, max = 200.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = selectedVoice.value?.let { voiceName ->
+                                        Voices.allVoices.find { it.name == voiceName }?.displayName ?: "Select Voice"
+                                    } ?: "Select Voice",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = if (!isTtsDisabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                                    modifier = Modifier.align(Alignment.CenterVertically)
+                                )
+
+                            }
+
+                            // Show Dialog for Voice Selection
+                            if (showDialog) {
+                                Dialog(onDismissRequest = {
+                                    showDialog = false
+                                    tempSelectedVoice = selectedVoice.value // Reset tempSelectedVoice if dialog is dismissed
+                                }) {
+                                    Surface(
+                                        modifier = Modifier.size(300.dp),
+                                        shape = MaterialTheme.shapes.medium,
+                                        color = MaterialTheme.colorScheme.background,
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(16.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Text(
+                                                text = "Select Voice",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(bottom = 8.dp)
+                                            )
+                                            HorizontalDivider()
+                                            LazyColumn(
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                items(availableVoices) { voiceDisplayName ->
+                                                    Row(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .clickable {
+                                                                tempSelectedVoice = voiceDisplayName // Update the temporary selection
+                                                                playVoiceSample(context, voiceDisplayName) // Play the selected voice sample
+                                                            }
+                                                            .padding(8.dp),
+                                                        horizontalArrangement = Arrangement.Center
+                                                    ) {
+                                                        Text(
+                                                            text = voiceDisplayName,
+                                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                                fontWeight = if (tempSelectedVoice == voiceDisplayName) FontWeight.Bold else FontWeight.Light,
+                                                            ),
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                            HorizontalDivider()
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Button(
+                                                onClick = {
+                                                    voiceViewModel.changeSelectedVoice(tempSelectedVoice!!) // Update the selected voice
+                                                    showDialog = false
+
+                                                    // Here you can add the action for previewing the voice if needed
+                                                },
+                                                modifier = Modifier.align(Alignment.End)
+                                            ) {
+                                                Text("Confirm")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Checkbox to enable/disable TTS
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = isTtsDisabled,
+                                    onCheckedChange = { isDisabled ->
+                                        isTtsDisabled = isDisabled
+                                    }
+                                )
+                                Text("Disable Text-to-Speech")
                             }
                         }
                     }
@@ -654,11 +841,3 @@ fun MyAccountTopBar(modifier: Modifier = Modifier, navController: NavController/
     )
 }
 
-@Preview(showSystemUi = true)
-@Composable
-fun MyAccountPreview(){
-    LENATheme(darkTheme = true) {
-        MyAccountScreen(navController = rememberNavController(), AuthViewModel())
-
-    }
-}

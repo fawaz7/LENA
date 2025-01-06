@@ -21,7 +21,7 @@ object LenaConstants {
         "Almost there...",
         "Bear with me...",
         "One moment please...",
-        "In progress..."
+        "In progress...",
     )
 
     val greetingStrings = listOf(

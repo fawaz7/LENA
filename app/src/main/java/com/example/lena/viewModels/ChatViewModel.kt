@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.media.MediaPlayer
 import android.net.Uri
 import android.net.wifi.WifiManager
 import android.os.Build
@@ -82,7 +83,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private val witAiClient = WitAiClient(BuildConfig.WIT_AI_TOKEN)
     private val weatherViewModel = WeatherViewModel()
-
 
     fun sendMessage(prompt: String) {
         viewModelScope.launch {

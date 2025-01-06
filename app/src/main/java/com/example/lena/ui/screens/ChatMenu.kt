@@ -355,8 +355,8 @@ fun MessageList(modifier: Modifier = Modifier, messageList: List<MessageModel>) 
         }
     }
 }
-@Composable
 
+@Composable
 fun MessageRow(messageModel: MessageModel) {
     val isModel = messageModel.role == "model"
     Row(
