@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "LENA"
+rootProject.name = "Lena"
 include(":app")
  
