@@ -429,7 +429,6 @@ fun MessageInput(
     val isListening by speechRecognitionViewModel.isListening.collectAsState()
     val spokenText by speechRecognitionViewModel.spokenText.observeAsState()
     val error by speechRecognitionViewModel.error.observeAsState()
-    val autoContinue by speechRecognitionViewModel.autoContinue.collectAsState()
 
 
     // Permission handling
@@ -468,23 +467,27 @@ fun MessageInput(
 
     // Handle responses and auto-continue
     LaunchedEffect(chatViewModel.messageList.size) {
-        scope.launch {
-            delay(1500) // Initial delay to allow processing
+         scope.launch {
+             delay(1500) // Initial delay to allow processing
 
-            while (true) {
-                val lastMessage = chatViewModel.messageList.lastOrNull()
+             var continueLoop = true
+             while (continueLoop) {
+                 val lastMessage = chatViewModel.messageList.lastOrNull()
 
-                if (lastMessage?.role == "model" && isThinkingString(lastMessage.prompt)) {
-                    delay(500) // Additional delay to check again
-                } else {
-                    if (autoContinue && !isListening && !speechRecognitionViewModel.isTtsPlaying.value) {
-                        speechRecognitionViewModel.handleMicrophoneClick()
-                    }
-                    break
-                }
-            }
-        }
-    }
+                 if (lastMessage?.role == "model" && isThinkingString(lastMessage.prompt)) {
+                     Log.d("MessageInput", "Thinking... (Delay)")
+                     delay(500) // Additional delay to check again
+                 } else {
+                     Log.d("MessageInput", "isListening: $isListening, isTtsPlaying: ${speechRecognitionViewModel.isTtsPlaying.value}")
+                     if (!isListening && !speechRecognitionViewModel.isTtsPlaying.value) {
+                         Log.d("MessageInput", "Mic should start")
+                         speechRecognitionViewModel.startListeningAfterTts()
+                     }
+                     continueLoop = false
+                 }
+             }
+         }
+     }
 
 
     // Handle errors
@@ -573,7 +576,6 @@ fun MessageInput(
                             context,
                             Manifest.permission.RECORD_AUDIO
                         ) == PackageManager.PERMISSION_GRANTED -> {
-                            speechRecognitionViewModel.toggleAutoContinue()
                             speechRecognitionViewModel.handleMicrophoneClick()
                         }
                         activity?.let {

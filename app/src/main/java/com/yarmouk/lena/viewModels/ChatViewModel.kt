@@ -77,6 +77,7 @@ class ChatViewModel(
             text("You were created by two Computer Science students as part of their final year project at Al-Yarmouk University in Irbid, Jordan.")
             text("Your purpose is to assist users in the most engaging and helpful way possible, balancing professionalism with warmth.")
             text("The user currently interacting with you is $firstName. Address them with respect and attentiveness, using their name to build trust and connection.")
+            text("The user that's currently interacting with you should typically be named $firstName, at it's their first name that they signed up with")
             text("You are optimized to work seamlessly in both Arabic and English, reflecting the diverse cultural and linguistic needs of your primary users.")
             text("Always strive to provide accurate, concise, and contextually relevant responses.")
             text("Your tone should be clear, friendly, and adaptable to the user's preferences or situation.")
@@ -171,9 +172,7 @@ class ChatViewModel(
         } catch (e: Exception) {
             Log.e("ChatViewModel", "Error handling control device feature: ${e.message}")
             messageList.add(MessageModel("Error handling device feature", "model"))
-            playResponse("Error handling device feature".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+            playResponse("Error handling device feature".trimEnd('\n'))
         }
     }
 
@@ -184,9 +183,7 @@ class ChatViewModel(
             "on" -> {
                 if (wifiManager.wifiState != WifiManager.WIFI_STATE_ENABLED && wifiManager.wifiState != WifiManager.WIFI_STATE_ENABLING) {
                     messageList.add(MessageModel("Opening WiFi Settings.", "model"))
-                    playResponse("Opening WiFi Settings.".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                    playResponse("Opening WiFi Settings.".trimEnd('\n'))
                     viewModelScope.launch {
                         delay(1500)  // 1.5 Second delay
                         val intent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
@@ -197,17 +194,13 @@ class ChatViewModel(
 
                 } else {
                     messageList.add(MessageModel("WiFi is already ON", "model"))
-                    playResponse("WiFi is already ON".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                    playResponse("WiFi is already ON".trimEnd('\n'))
                 }
             }
             "off" -> {
                 if (wifiManager.wifiState != WifiManager.WIFI_STATE_DISABLED && wifiManager.wifiState != WifiManager.WIFI_STATE_DISABLING) {
                     messageList.add(MessageModel("Opening WiFi Settings.", "model"))
-                    playResponse("Opening WiFi Settings.".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                    playResponse("Opening WiFi Settings.".trimEnd('\n'))
                     viewModelScope.launch {
                         delay(1500)  // 1.5 Second delay
                         val intent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
@@ -218,9 +211,7 @@ class ChatViewModel(
 
                 } else {
                     messageList.add(MessageModel("WiFi is already OFF", "model"))
-                    playResponse("WiFi is already OFF".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                    playResponse("WiFi is already OFF".trimEnd('\n'))
                 }
             }
             "check" -> {
@@ -250,9 +241,7 @@ class ChatViewModel(
             }
             else -> {
                 messageList.add(MessageModel("Unknown action for WiFi", "model"))
-                playResponse("Unknown action for WiFi".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                playResponse("Unknown action for WiFi".trimEnd('\n'))
             }
         }
     }
@@ -263,9 +252,7 @@ class ChatViewModel(
 
         if (bluetoothAdapter == null) {
             messageList.add(MessageModel("Bluetooth not supported on this device", "model"))
-            playResponse("Bluetooth not supported on this device".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+            playResponse("Bluetooth not supported on this device".trimEnd('\n'))
             return
         }
 
@@ -273,9 +260,7 @@ class ChatViewModel(
             ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED
         ) {
             messageList.add(MessageModel("Please grant Bluetooth permissions in the settings", "model"))
-            playResponse("Please grant Bluetooth permissions in the settings".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+            playResponse("Please grant Bluetooth permissions in the settings".trimEnd('\n'))
             viewModelScope.launch {
                 delay(1500)  // 1.5 Second delay
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -291,9 +276,7 @@ class ChatViewModel(
             "on" -> {
                 if (!bluetoothAdapter.isEnabled) {
                     messageList.add(MessageModel("Requesting to turn Bluetooth ON", "model"))
-                    playResponse("Requesting to turn Bluetooth ON".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                    playResponse("Requesting to turn Bluetooth ON".trimEnd('\n'))
                     viewModelScope.launch {
                         delay(1500)  // 1.5 Second delay
                         val intent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE).apply {
@@ -303,17 +286,13 @@ class ChatViewModel(
                     }
                 } else {
                     messageList.add(MessageModel("Bluetooth is already ON", "model"))
-                    playResponse("Bluetooth is already ON".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                    playResponse("Bluetooth is already ON".trimEnd('\n'))
                 }
             }
             "off" -> {
                 if (bluetoothAdapter.isEnabled) {
                     messageList.add(MessageModel("Please turn off Bluetooth manually in settings", "model"))
-                    playResponse("Please turn off Bluetooth manually in settings".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                    playResponse("Please turn off Bluetooth manually in settings".trimEnd('\n'))
                     viewModelScope.launch {
                         delay(1500)  // 1.5 Second delay
                         val intent = Intent(Settings.ACTION_BLUETOOTH_SETTINGS).apply {
@@ -323,16 +302,12 @@ class ChatViewModel(
                     }
                 } else {
                     messageList.add(MessageModel("Bluetooth is already OFF", "model"))
-                    playResponse("Bluetooth is already OFF".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                    playResponse("Bluetooth is already OFF".trimEnd('\n'))
                 }
             }
             "check" -> {
                 messageList.add(MessageModel(if (bluetoothAdapter.isEnabled) "Bluetooth is turned On" else "Bluetooth is turned Off", "model"))
-                playResponse(if (bluetoothAdapter.isEnabled) "Bluetooth is turned On".trimEnd('\n') else "Bluetooth is turned Off".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                playResponse(if (bluetoothAdapter.isEnabled) "Bluetooth is turned On".trimEnd('\n') else "Bluetooth is turned Off".trimEnd('\n'))
             }
             else -> messageList.add(MessageModel("Unknown action for Bluetooth", "model"))
         }
@@ -342,9 +317,7 @@ class ChatViewModel(
         when (action.lowercase()) {
             "on" -> {
                 messageList.add(MessageModel("Opening Location Settings to turn ON", "model"))
-                playResponse("Opening Location Settings to turn ON".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                playResponse("Opening Location Settings to turn ON".trimEnd('\n'))
                 viewModelScope.launch {
                     delay(1000)  // 1 Second delay
                     val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS).apply {
@@ -355,9 +328,7 @@ class ChatViewModel(
             }
             "off" -> {
                 messageList.add(MessageModel("Opening Location Settings to turn OFF", "model"))
-                playResponse("Opening Location Settings to turn OFF".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                playResponse("Opening Location Settings to turn OFF".trimEnd('\n'))
                 viewModelScope.launch {
                     delay(1000)  // 1 Second delay
                     val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS).apply {
@@ -370,15 +341,11 @@ class ChatViewModel(
                 val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
                 val isLocationEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
                 messageList.add(MessageModel(if (isLocationEnabled) "Location Service is turned On" else "Location Service is turned Off", "model"))
-                playResponse(if (isLocationEnabled) "Location Service is turned On".trimEnd('\n') else "Location Service is turned Off".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                playResponse(if (isLocationEnabled) "Location Service is turned On".trimEnd('\n') else "Location Service is turned Off".trimEnd('\n'))
             }
             else -> {
                 messageList.add(MessageModel("Unknown action for Location Service", "model"))
-                playResponse("Unknown action for Location Service".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                playResponse("Unknown action for Location Service".trimEnd('\n'))
             }
         }
     }
@@ -390,9 +357,7 @@ class ChatViewModel(
             "on" -> {
                 if (!isAirplaneModeOn) {
                     messageList.add(MessageModel("Please enable Airplane mode manually", "model"))
-                    playResponse("Please enable Airplane mode manually".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                    playResponse("Please enable Airplane mode manually".trimEnd('\n'))
                     viewModelScope.launch {
                         delay(1000)  // 1 Second delay
                         val intent = Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS).apply {
@@ -451,29 +416,21 @@ class ChatViewModel(
             "on" -> {
                 notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
                 messageList.add(MessageModel("Do Not Disturb mode turned ON", "model"))
-                playResponse("Do Not Disturb mode turned ON".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                playResponse("Do Not Disturb mode turned ON".trimEnd('\n'))
             }
             "off" -> {
                 notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
                 messageList.add(MessageModel("Do Not Disturb mode turned OFF", "model"))
-                playResponse("Do Not Disturb mode turned OFF".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                playResponse("Do Not Disturb mode turned OFF".trimEnd('\n'))
             }
             "check" -> {
                 val isDoNotDisturbOn = notificationManager.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_NONE
                 messageList.add(MessageModel(if (isDoNotDisturbOn) "Do Not Disturb mode is ON" else "Do Not Disturb mode is OFF", "model"))
-                playResponse(if (isDoNotDisturbOn) "Do Not Disturb mode is ON".trimEnd('\n') else "Do Not Disturb mode is OFF".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                playResponse(if (isDoNotDisturbOn) "Do Not Disturb mode is ON".trimEnd('\n') else "Do Not Disturb mode is OFF".trimEnd('\n'))
             }
             else -> {
                 messageList.add(MessageModel("Unknown action for Do Not Disturb mode", "model"))
-                playResponse("Unknown action for Do Not Disturb mode".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                playResponse("Unknown action for Do Not Disturb mode".trimEnd('\n'))
             }
         }
     }
@@ -506,9 +463,7 @@ class ChatViewModel(
                     }
                 } else {
                     messageList.add(MessageModel("Unable to determine coordinates for $locationName", "model"))
-                    playResponse("\"Unable to determine coordinates for $locationName".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                    playResponse("\"Unable to determine coordinates for $locationName".trimEnd('\n'))
                 }
             } else {
                 // If no location is specified, use the current location
@@ -517,9 +472,7 @@ class ChatViewModel(
         } catch (e: Exception) {
             Log.e("ChatViewModel", "Error handling weather query: ${e.message}")
             messageList.add(MessageModel("Error handling weather query", "model"))
-            playResponse("Error handling weather query".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+            playResponse("Error handling weather query".trimEnd('\n'))
         }
     }
 
@@ -550,9 +503,7 @@ class ChatViewModel(
                     }
                 } else {
                     messageList.add(MessageModel("Unable to determine coordinates for $locationName", "model"))
-                    playResponse("Unable to determine coordinates for $locationName".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                    playResponse("Unable to determine coordinates for $locationName".trimEnd('\n'))
                 }
             } else {
                 // If no location is specified, use the current location
@@ -561,9 +512,7 @@ class ChatViewModel(
         } catch (e: Exception) {
             Log.e("ChatViewModel", "Error handling weather condition query: ${e.message}")
             messageList.add(MessageModel("Error handling weather condition query", "model"))
-            playResponse("Error handling weather condition query".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+            playResponse("Error handling weather condition query".trimEnd('\n'))
         }
     }
 
@@ -572,15 +521,11 @@ class ChatViewModel(
             if (location != null) {
                 weatherViewModel.fetchWeather(location.latitude, location.longitude, datetime, forecastType) { weatherResult ->
                     messageList.add(MessageModel(weatherResult, "model"))
-                    playResponse(weatherResult.trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                    playResponse(weatherResult.trimEnd('\n'))
                 }
             } else {
                 messageList.add(MessageModel("Unable to determine current location", "model"))
-                playResponse("Unable to determine current location".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                playResponse("Unable to determine current location".trimEnd('\n'))
             }
         }
     }
@@ -590,15 +535,11 @@ class ChatViewModel(
             if (location != null) {
                 weatherViewModel.checkWeatherCondition(location.latitude, location.longitude, datetime, forecastType, condition) { weatherResult ->
                     messageList.add(MessageModel(weatherResult, "model"))
-                    playResponse(weatherResult.trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                    playResponse(weatherResult.trimEnd('\n'))
                 }
             } else {
                 messageList.add(MessageModel("Unable to determine current location", "model"))
-                playResponse("Unable to determine current location".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                playResponse("Unable to determine current location".trimEnd('\n'))
             }
         }
     }
@@ -621,24 +562,18 @@ class ChatViewModel(
                 Log.d("SetReminderHandler", "No datetime specified, setting as all-day reminder")
                 reminderViewModel.setAllDayReminder(context, accountName, messageBody) { result ->
                     messageList.add(MessageModel(result, "model"))
-                    playResponse(result.trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                    playResponse(result.trimEnd('\n'))
                 }
             } else {
                 reminderViewModel.setReminder(context, accountName, messageBody, datetime) { result ->
                     messageList.add(MessageModel(result, "model"))
-                    playResponse(result.trimEnd('\n')){
-                        speechRecognitionViewModel.startListeningIfAutoContinue()
-                    }
+                    playResponse(result.trimEnd('\n'))
                 }
             }
         } catch (e: Exception) {
             Log.e("SetReminderHandler", "Error setting reminder", e)
             messageList.add(MessageModel("Error setting reminder", "model"))
-            playResponse("Error setting reminder".trimEnd('\n')){
-                speechRecognitionViewModel.startListeningIfAutoContinue()
-            }
+            playResponse("Error setting reminder".trimEnd('\n'))
         }
     }
 
@@ -655,9 +590,7 @@ class ChatViewModel(
         val reminderViewModel = ReminderViewModel()
         reminderViewModel.setRecurringReminder(context, accountName, messageBody, datetime, frequency) { result ->
             messageList.add(MessageModel(result, "model"))
-            playResponse(result.trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+            playResponse(result.trimEnd('\n'))
         }
     }
 
@@ -671,9 +604,7 @@ class ChatViewModel(
             val reminderViewModel = ReminderViewModel()
             reminderViewModel.checkReminder(context, datetime) { result ->
                 messageList.add(MessageModel(result, "model"))
-                playResponse(result.trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                playResponse(result.trimEnd('\n'))
             }
         } catch (e: Exception) {
             Log.e("CheckReminderHandler", "Error checking reminders", e)
@@ -692,9 +623,7 @@ class ChatViewModel(
 
             alarmViewModel.setAlarm(context, datetime, isRecurring) { result ->
                 messageList.add(MessageModel(result, "model"))
-                playResponse(result.trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                playResponse(result.trimEnd('\n'))
 
             }
         } catch (e: Exception) {
@@ -754,9 +683,7 @@ class ChatViewModel(
             // Start the activity
             try {
                 messageList.add(MessageModel("Showing directions to $destination", "model"))
-                playResponse("Showing directions to $destination".trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                playResponse("Showing directions to $destination".trimEnd('\n'))
                 viewModelScope.launch {
                     delay(1500)  // 1.5 Second delay
                     val intent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
@@ -786,9 +713,7 @@ class ChatViewModel(
 
             timerViewModel.setTimer(context, normalizedValue, originalUnit) { result ->
                 messageList.add(MessageModel(result, "model"))
-                playResponse(result.trimEnd('\n')){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                playResponse(result.trimEnd('\n'))
             }
         } catch (e: Exception) {
             Log.e("ChatViewModel", "Error setting timer", e)
@@ -814,7 +739,9 @@ class ChatViewModel(
                 onComplete()
             }
         }, {
+            Log.d("playResponse", "Audio playback finished.")
             speechRecognitionViewModel.setTtsPlaying(false) // Indicate TTS has finished
+            speechRecognitionViewModel.startListeningAfterTts() // Start listening after TTS completes
             onComplete()
         })
     }
@@ -834,9 +761,7 @@ class ChatViewModel(
                 messageList.add(MessageModel(response.text?.trimEnd('\n') ?: "", "model"))
 
                 // Play the synthesized response
-                playResponse(response.text?.trimEnd('\n') ?: ""){
-                    speechRecognitionViewModel.startListeningIfAutoContinue()
-                }
+                playResponse(response.text?.trimEnd('\n') ?: "")
                 Log.d("ChatViewModel", "Response: ${response.text}")
             } catch (e: Exception) {
                 messageList.removeAt(messageList.lastIndex)

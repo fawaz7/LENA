@@ -171,11 +171,12 @@ class WitAiClient(private val accessToken: String) {
             audioTrack.stop()
             audioTrack.release()
 
-            // Invoke the callback to restart mic listening
-            onPlaybackComplete()
+            Log.d("playAudio", "Playback completed.")
+            onPlaybackComplete() // Invoke the callback to restart mic listening
         } catch (e: Exception) {
             Log.e("playAudio", "Error playing audio: ${e.message}")
             e.printStackTrace()
+            onPlaybackComplete() // Ensure the callback is called even if there's an error
         }
     }
 }

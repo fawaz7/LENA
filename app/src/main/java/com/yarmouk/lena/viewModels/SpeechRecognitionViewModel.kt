@@ -8,12 +8,15 @@ import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import android.os.Handler
+import android.os.Looper
 
 class SpeechRecognitionViewModel(application: Application) : AndroidViewModel(application) {
     private val _isListening = MutableStateFlow(false)
@@ -27,9 +30,6 @@ class SpeechRecognitionViewModel(application: Application) : AndroidViewModel(ap
 
     private val _needsPermission = MutableStateFlow(false)
     val needsPermission: StateFlow<Boolean> = _needsPermission
-
-    private val _autoContinue = MutableStateFlow(false)
-    val autoContinue: StateFlow<Boolean> = _autoContinue
 
     private val _isTtsPlaying = MutableStateFlow(false)
     val isTtsPlaying: StateFlow<Boolean> = _isTtsPlaying
@@ -64,12 +64,10 @@ class SpeechRecognitionViewModel(application: Application) : AndroidViewModel(ap
             }
             isListening.value -> {
                 stopListening()
-                _autoContinue.value = false
             }
             else -> {
                 checkAndInitializeSpeechRecognizer()
                 startListening()
-                _autoContinue.value = true
             }
         }
     }
@@ -129,9 +127,15 @@ class SpeechRecognitionViewModel(application: Application) : AndroidViewModel(ap
         speechRecognizer?.startListening(intent)
     }
 
-    fun startListeningIfAutoContinue() {
-        if (_autoContinue.value && !_isTtsPlaying.value) {
-            startListening()
+    fun startListeningAfterTts() {
+        // Ensure this runs on the main thread
+        Handler(Looper.getMainLooper()).post {
+            if (!_isTtsPlaying.value) {
+                Log.d("SpeechRecognitionViewModel", "Starting listening after TTS.")
+                startListening()
+            } else {
+                Log.d("SpeechRecognitionViewModel", "TTS is still playing, will not start listening.")
+            }
         }
     }
 
@@ -150,19 +154,9 @@ class SpeechRecognitionViewModel(application: Application) : AndroidViewModel(ap
         _needsPermission.value = false
     }
 
-    fun toggleAutoContinue() {
-        _autoContinue.value = !_autoContinue.value
-    }
-
-    fun setAutoContinue(value: Boolean) {
-        _autoContinue.value = value
-    }
-
     fun setTtsPlaying(value: Boolean) {
         _isTtsPlaying.value = value
     }
-
-
 
     // Call this to reset the error after displaying it
     fun clearError() {
