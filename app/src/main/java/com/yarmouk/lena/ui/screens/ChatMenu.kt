@@ -3,6 +3,7 @@ package com.yarmouk.lena.ui.screens
 
 import android.Manifest
 import android.app.Activity
+import android.app.Application
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
@@ -102,18 +103,27 @@ import kotlinx.coroutines.launch
 @RequiresApi(Build.VERSION_CODES.S)
 @Composable
 fun ChatMenu(navController: NavController, authViewModel: AuthViewModel) {
+    val context = LocalContext.current
+    val application = context.applicationContext as Application
+    val speechRecognitionViewModel: SpeechRecognitionViewModel = viewModel()
+    val chatViewModel: ChatViewModel = viewModel(
+        factory = ChatViewModel.Factory(application, speechRecognitionViewModel)
+    )
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    val chatViewModel: ChatViewModel = viewModel()
+
     var backPressedOnce by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val authState = authViewModel.authState.observeAsState()
-    val context = LocalContext.current
+
     val activity = context as? Activity
 
     // Permission handling states
     var showPermissionDialog by remember { mutableStateOf(false) }
     var showRationaleDialog by remember { mutableStateOf(false) }
+
+
+
 
     val multiplePermissionResultLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -237,7 +247,9 @@ fun ChatMenu(navController: NavController, authViewModel: AuthViewModel) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
-                    .imePadding()
+                    .imePadding(),
+                chatViewModel = chatViewModel,
+                speechRecognitionViewModel = speechRecognitionViewModel
             )
         }
     }
@@ -401,8 +413,8 @@ fun MessageRow(messageModel: MessageModel) {
 fun MessageInput(
     onMessageSend: (String) -> Unit,
     modifier: Modifier = Modifier,
-    chatViewModel: ChatViewModel = viewModel(),
-    speechRecognitionViewModel: SpeechRecognitionViewModel = viewModel()
+    chatViewModel: ChatViewModel,
+    speechRecognitionViewModel: SpeechRecognitionViewModel
 ) {
     var message by remember { mutableStateOf("") }
     var showPermissionDialog by remember { mutableStateOf(false) }
@@ -457,15 +469,15 @@ fun MessageInput(
     // Handle responses and auto-continue
     LaunchedEffect(chatViewModel.messageList.size) {
         scope.launch {
-            delay(1500)  // Initial delay to allow processing
+            delay(1500) // Initial delay to allow processing
 
             while (true) {
                 val lastMessage = chatViewModel.messageList.lastOrNull()
 
                 if (lastMessage?.role == "model" && isThinkingString(lastMessage.prompt)) {
-                    delay(500)  // Additional delay to check again
+                    delay(500) // Additional delay to check again
                 } else {
-                    if (autoContinue && !isListening) {
+                    if (autoContinue && !isListening && !speechRecognitionViewModel.isTtsPlaying.value) {
                         speechRecognitionViewModel.handleMicrophoneClick()
                     }
                     break

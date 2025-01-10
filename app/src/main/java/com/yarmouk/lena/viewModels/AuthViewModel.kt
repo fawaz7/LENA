@@ -891,8 +891,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             throw IllegalArgumentException("Unknown ViewModel class")
         }
     }
-
-
 }
 
 

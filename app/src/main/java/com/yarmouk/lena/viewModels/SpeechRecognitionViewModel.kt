@@ -31,9 +31,10 @@ class SpeechRecognitionViewModel(application: Application) : AndroidViewModel(ap
     private val _autoContinue = MutableStateFlow(false)
     val autoContinue: StateFlow<Boolean> = _autoContinue
 
+    private val _isTtsPlaying = MutableStateFlow(false)
+    val isTtsPlaying: StateFlow<Boolean> = _isTtsPlaying
+
     private var speechRecognizer: SpeechRecognizer? = null
-
-
 
     init {
         if (!SpeechRecognizer.isRecognitionAvailable(application)) {
@@ -119,7 +120,6 @@ class SpeechRecognitionViewModel(application: Application) : AndroidViewModel(ap
         })
     }
 
-
     private fun startListening() {
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -127,6 +127,12 @@ class SpeechRecognitionViewModel(application: Application) : AndroidViewModel(ap
         }
 
         speechRecognizer?.startListening(intent)
+    }
+
+    fun startListeningIfAutoContinue() {
+        if (_autoContinue.value && !_isTtsPlaying.value) {
+            startListening()
+        }
     }
 
     fun stopListening() {
@@ -152,10 +158,14 @@ class SpeechRecognitionViewModel(application: Application) : AndroidViewModel(ap
         _autoContinue.value = value
     }
 
+    fun setTtsPlaying(value: Boolean) {
+        _isTtsPlaying.value = value
+    }
+
+
+
     // Call this to reset the error after displaying it
     fun clearError() {
         _error.value = null
     }
-
-
 }

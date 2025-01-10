@@ -80,7 +80,7 @@ class WitAiClient(private val accessToken: String) {
     }
 
     // Synthesize speech
-    fun synthesizeSpeech(text: String, voice: String, callback: (Boolean) -> Unit) {
+    fun synthesizeSpeech(text: String, voice: String, callback: (Boolean) -> Unit, onPlaybackComplete: () -> Unit) {
         val url = "https://api.wit.ai/synthesize?v=20240304"
         val speed = 125
         val pitch = 130
@@ -125,26 +125,20 @@ class WitAiClient(private val accessToken: String) {
 
             override fun onResponse(call: Call, response: Response) {
                 try {
-                    Log.d("synthesizeSpeech", "Response code: ${response.code}")
-
                     if (!response.isSuccessful) {
-                        val errorBody = response.body?.string()
-                        Log.e("synthesizeSpeech", "Request unsuccessful: ${response.code}")
-                        Log.e("synthesizeSpeech", "Error body: $errorBody")
                         callback(false)
                         return
                     }
 
                     val audioData = response.body?.bytes()
                     if (audioData == null || audioData.isEmpty()) {
-                        Log.e("synthesizeSpeech", "Received empty audio data")
                         callback(false)
                         return
                     }
 
-                    Log.d("synthesizeSpeech", "Audio data received: ${audioData.size} bytes")
-
-                    playAudio(audioData)
+                    playAudio(audioData) {
+                        onPlaybackComplete() // Restart mic input after TTS completes
+                    }
                     callback(true)
 
                 } catch (e: Exception) {
@@ -156,14 +150,12 @@ class WitAiClient(private val accessToken: String) {
         })
     }
 
-    fun playAudio(audioData: ByteArray) {
+    fun playAudio(audioData: ByteArray, onPlaybackComplete: () -> Unit) {
         try {
-            // Specify the audio format
-            val sampleRate = 22050  // Ensure this matches the sample rate used by the API
+            val sampleRate = 22050
             val channelConfig = AudioFormat.CHANNEL_OUT_MONO
             val audioFormat = AudioFormat.ENCODING_PCM_16BIT
 
-            // Create an AudioTrack instance
             val minBufferSize = AudioTrack.getMinBufferSize(sampleRate, channelConfig, audioFormat)
             val audioTrack = AudioTrack(
                 AudioManager.STREAM_MUSIC,
@@ -174,15 +166,16 @@ class WitAiClient(private val accessToken: String) {
                 AudioTrack.MODE_STREAM
             )
 
-            // Play the audio data
             audioTrack.play()
             audioTrack.write(audioData, 0, audioData.size)
             audioTrack.stop()
             audioTrack.release()
+
+            // Invoke the callback to restart mic listening
+            onPlaybackComplete()
         } catch (e: Exception) {
             Log.e("playAudio", "Error playing audio: ${e.message}")
             e.printStackTrace()
         }
     }
-
 }
