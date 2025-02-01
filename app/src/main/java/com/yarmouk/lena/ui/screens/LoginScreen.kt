@@ -88,7 +88,7 @@ fun LoginScreen(
     val uiState by authViewModel.uiState.collectAsState()
     val isImeVisible by rememberImeState()
     val focusManager = LocalFocusManager.current
-    val usernameFocusRequester = FocusRequester()
+    val usernameFocusRequester = FocusRequester() //refactoring
     val passwordFocusRequester = FocusRequester()
     val authState = authViewModel.authState.observeAsState()
     val context = LocalContext.current

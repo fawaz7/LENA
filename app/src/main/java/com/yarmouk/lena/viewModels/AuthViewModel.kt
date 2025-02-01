@@ -1,5 +1,55 @@
 package com.yarmouk.lena.viewModels
 
+/**
+ * AuthViewModel.kt
+ *
+ * This Kotlin file defines the `AuthViewModel` class, which is an AndroidViewModel responsible for handling authentication-related processes within the LENA application.
+ * It integrates with Firebase Authentication and Firestore to manage user authentication, registration, password management, and user data retrieval.
+ *
+ * Key Components:
+ * - Data Classes:
+ *   - `AuthUiState`: Represents the UI state for authentication-related screens, including form fields, errors, and state flags.
+ *   - `AuthState`: Sealed class representing the authentication state (Authenticated, Unauthenticated, Loading).
+ *   - `AuthEvent`: Sealed class for authentication events (Error, Info).
+ *   - `toastType`: Enum representing the type of toast messages (Info, Error).
+ *
+ * - ViewModel Initialization:
+ *   - Initializes Firebase Authentication and Firestore instances.
+ *   - Sets up listeners for real-time updates and checks initial authentication status.
+ *   - Provides LiveData and StateFlow for UI state and authentication state.
+ *
+ * - Functions:
+ *   - `login(email: String, password: String)`: Handles user login by validating credentials and signing in with Firebase Authentication.
+ *   - `signUp()`: Handles user registration by creating a new account with Firebase Authentication and storing user data in Firestore.
+ *   - `resetPassword(email: String)`: Sends a password reset email to the user.
+ *   - `changeEmail(newEmail: String, password: String, callback: (Boolean) -> Unit)`: Changes the user's email after re-authentication.
+ *   - `changePassword(oldPassword: String, newPassword: String, callback: (Boolean) -> Unit)`: Changes the user's password after re-authentication.
+ *   - `deleteAccount(password: String, callback: (Boolean) -> Unit)`: Deletes the user's account and associated Firestore data after re-authentication.
+ *   - `updateVoiceModel(selectedVoice: String)`: Updates the user's selected voice model in Firestore.
+ *   - `updateTtsStatus(isTtsDisabled: Boolean)`: Updates the TTS (Text-to-Speech) status in Firestore.
+ *   - `signOut(navController: NavController? = null)`: Signs out the user and resets the UI state.
+ *   - `sendVerificationEmail()`: Sends a verification email to the user's email address.
+ *
+ * - Validation Functions:
+ *   - `validateEmail(email: String)`: Validates the format of an email address.
+ *   - `validateName(name: String, focused: Boolean)`: Validates the format and length of a name.
+ *   - `validatePassword(password: String)`: Validates the complexity and length of a password.
+ *   - `validateSignInForm()`: Validates the entire sign-in form.
+ *   - `validateSignUpForm()`: Validates the entire sign-up form.
+ *
+ * - Utility Functions:
+ *   - `setupRealtimeListener()`: Sets up a real-time listener for Firestore updates.
+ *   - `fetchUserInfo()`: Fetches user information from Firestore.
+ *   - `fetchVerificationStatus()`: Checks the user's email verification status.
+ *   - `toastMessage(eventType: toastType, message: String)`: Displays a toast message based on the event type.
+ *
+ * Usage:
+ * - The `AuthViewModel` class provides comprehensive authentication management, including login, registration, password reset, email change, and account deletion.
+ * - It ensures real-time updates to the UI and provides feedback to the user through toast messages and state flows.
+ *
+ * This ViewModel enhances the LENA application's authentication capabilities by integrating with Firebase services and managing authentication-related UI states efficiently.
+ */
+
 import android.app.Application
 import android.util.Log
 import android.util.Patterns
@@ -112,7 +162,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         setupRealtimeListener()
     }
 
-    private fun setupRealtimeListener() {
+    private fun setupRealtimeListener() { // Listen for changes in the user's document in the firebase
         val user = auth.currentUser
         user?.let {
             val userId = it.uid
@@ -586,7 +636,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
                     // Fetch voice settings
                     val selectedVoice = document.getString("selectedVoice") ?: "Rubie"
-                    val isTtsDisabled = document.getBoolean("isTtsDisabled") ?: false
+                    val isTtsDisabled = document.getBoolean("isTtsDisabled") == true
                     _uiState.update { state ->
                         state.copy(
                             selectedVoice = selectedVoice,
@@ -629,7 +679,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    internal fun reauthenticateUser(password: String, onComplete: (Boolean) -> Unit) {
+    internal fun reAuthenticateUser(password: String, onComplete: (Boolean) -> Unit) {
         val currentUser = FirebaseAuth.getInstance().currentUser
         if (currentUser != null) {
             val credential = EmailAuthProvider.getCredential(currentUser.email!!, password)
@@ -661,7 +711,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         if (currentUser != null) {
             _authState.value = AuthState.Loading
 
-            reauthenticateUser(password) { success ->
+            reAuthenticateUser(password) { success ->
                 if (success) {
                     currentUser.verifyBeforeUpdateEmail(newEmail).addOnCompleteListener { task ->
                         if (task.isSuccessful) {
@@ -690,7 +740,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             _authState.value = AuthState.Loading
 
             // First re-authenticate the user with their old password
-            reauthenticateUser(oldPassword) { success ->
+            reAuthenticateUser(oldPassword) { success ->
                 if (success) {
                     // If re-authentication is successful, proceed with password change
                     currentUser.updatePassword(newPassword).addOnCompleteListener { task ->
@@ -726,7 +776,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             _authState.value = AuthState.Loading
 
             // First re-authenticate the user
-            reauthenticateUser(password) { success ->
+            reAuthenticateUser(password) { success ->
                 if (success) {
                     // Delete Firestore data first
                     val userRef = fStore.collection("Users").document(currentUser.uid)

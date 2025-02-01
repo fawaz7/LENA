@@ -1,5 +1,39 @@
 package com.yarmouk.lena.viewModels
 
+/**
+ * ChatViewModel.kt
+ *
+ * This Kotlin file defines the `ChatViewModel` class, which is an AndroidViewModel responsible for managing chat interactions within the LENA application.
+ * It integrates with various services and ViewModels to handle user inputs, process responses, and perform actions like setting reminders, controlling device features, and fetching weather information.
+ *
+ * Key Components:
+ * - ViewModel Initialization:
+ *   - Initializes required ViewModels (AuthViewModel, SpeechRecognitionViewModel, WeatherViewModel, TimerViewModel) and services (WitAiClient, GenerativeModel).
+ *   - Sets up listeners for authentication state changes and updates system instructions for the generative model.
+ *   - Provides a mutable state list for managing chat messages.
+ *
+ * - Functions:
+ *   - `sendMessage(prompt: String)`: Sends a user message and processes the response using Wit.ai or fallback to the generative model.
+ *   - `handleWitAiResponse(response: String, prompt: String)`: Handles the response from Wit.ai and processes intents like controlling device features, fetching weather, setting reminders, etc.
+ *   - `handleControlDeviceFeature(json: JsonObject, initialPrompt: String)`: Handles intents related to controlling device features like WiFi, Bluetooth, Location Services, Airplane Mode, and Do Not Disturb Mode.
+ *   - `handleWeatherQuery(json: JsonObject)`: Handles weather queries by fetching weather information based on location and datetime.
+ *   - `handleWeatherConditionQuery(json: JsonObject)`: Handles weather condition queries by checking specific weather conditions.
+ *   - `handleSetReminder(context: Context, json: JsonObject)`: Handles setting reminders using the ReminderViewModel.
+ *   - `handleSetRecurringReminder(context: Context, json: JsonObject)`: Handles setting recurring reminders using the ReminderViewModel.
+ *   - `handleCheckReminder(context: Context, json: JsonObject)`: Handles checking reminders using the ReminderViewModel.
+ *   - `handleSetAlarm(context: Context, json: JsonObject)`: Handles setting alarms using the AlarmViewModel.
+ *   - `handleGetDirections(context: Context, json: JsonObject)`: Handles getting directions using Google Maps.
+ *   - `handleSetTimer(context: Context, json: JsonObject)`: Handles setting timers using the TimerViewModel.
+ *   - `playResponse(responseText: String, onComplete: () -> Unit = {})`: Plays the synthesized speech response using Wit.ai's TTS capabilities.
+ *   - `fallbackToGenerativeModel(prompt: String)`: Falls back to using the generative model to handle responses when no specific intent is detected.
+ *
+ * Usage:
+ * - The `ChatViewModel` class provides a comprehensive approach to managing chat interactions, integrating with various services and handling a wide range of user intents.
+ * - It ensures that user inputs are processed efficiently, responses are generated accurately, and actions are performed seamlessly within the LENA application.
+ *
+ * This ViewModel enhances the LENA application's interactive capabilities by leveraging advanced AI models, handling device control features, and providing comprehensive user support.
+ */
+
 import android.Manifest
 import android.app.Application
 import android.app.NotificationManager
@@ -12,7 +46,6 @@ import android.location.LocationManager
 import android.net.Uri
 import android.net.wifi.WifiManager
 import android.os.Build
-import android.provider.AlarmClock
 import android.provider.Settings
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
@@ -22,15 +55,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewModelScope
-import com.yarmouk.lena.BuildConfig
-import com.yarmouk.lena.Data.LenaConstants.thinkingStrings
-import com.yarmouk.lena.Models.MessageModel
-import com.yarmouk.lena.utils.WitAiClient
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.Content
 import com.google.ai.client.generativeai.type.content
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.yarmouk.lena.BuildConfig
+import com.yarmouk.lena.Data.LenaConstants.thinkingStrings
+import com.yarmouk.lena.Models.MessageModel
+import com.yarmouk.lena.utils.WitAiClient
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -757,9 +790,8 @@ class ChatViewModel(
                 )
 
                 val response = chat.sendMessage(prompt)
-                messageList.removeAt(messageList.lastIndex)
+                messageList.removeAt(messageList.lastIndex) //Remove thinking string
                 messageList.add(MessageModel(response.text?.trimEnd('\n') ?: "", "model"))
-
                 // Play the synthesized response
                 playResponse(response.text?.trimEnd('\n') ?: "")
                 Log.d("ChatViewModel", "Response: ${response.text}")

@@ -1,5 +1,35 @@
 package com.yarmouk.lena.viewModels
 
+/**
+ * AlarmViewModel.kt
+ *
+ * This Kotlin file defines the `AlarmViewModel` class, which is a ViewModel responsible for handling alarm-related functionalities within the LENA application.
+ * It leverages Android's AlarmClock API to set alarms and uses a generative AI model for generating user-friendly confirmation messages.
+ *
+ * Key Components:
+ * - `AlarmViewModel` Class:
+ *   - Inherits from `ViewModel` and manages the lifecycle-aware components.
+ *   - Initializes a `GenerativeModel` instance with API key and system instructions for generating responses.
+ *
+ * - Functions:
+ *   - `setAlarm(context: Context, datetime: String, isRecurring: Boolean, onResult: (String) -> Unit)`:
+ *     - Parses the provided datetime string and sets an alarm using the AlarmClock API.
+ *     - Constructs an `Intent` to set the alarm with details like hour, minute, and message.
+ *     - Checks if any app can handle the alarm intent and logs the available apps.
+ *     - If successful, starts the activity to set the alarm and generates a confirmation message using the AI model.
+ *     - Handles exceptions and provides error messages if the alarm setting fails.
+ *
+ *   - `processWithGemini(prompt: String)`:
+ *     - A suspend function that sends a prompt to the generative AI model and returns the generated content.
+ *     - Handles exceptions and logs errors if the content generation fails.
+ *
+ * Usage:
+ * - The `AlarmViewModel` class provides an easy way to set alarms and generate dynamic confirmation messages.
+ * - It ensures that alarms are set correctly and provides clear feedback to the user through the AI-generated messages.
+ *
+ * This ViewModel enhances the LENA application's capabilities by integrating alarm functionalities and leveraging generative AI for improved user interactions.
+ */
+
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager

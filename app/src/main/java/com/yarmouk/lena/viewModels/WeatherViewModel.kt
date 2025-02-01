@@ -1,6 +1,41 @@
 package com.yarmouk.lena.viewModels
 
-
+/**
+ * WeatherViewModel.kt
+ *
+ * This Kotlin file defines the `WeatherViewModel` class, which is a ViewModel responsible for managing weather-related functionalities within the LENA application.
+ * It integrates with the OpenWeatherMap API to fetch weather data and uses a generative AI model to generate user-friendly weather information.
+ *
+ * Key Components:
+ * - ViewModel Initialization:
+ *   - Initializes an `OkHttpClient` with logging interceptor for network requests.
+ *   - Initializes a `GenerativeModel` instance with API key and system instructions for generating responses.
+ *
+ * - Functions:
+ *   - `fetchWeather(lat: Double, lon: Double, datetime: String?, forecastType: String, onResult: (String) -> Unit)`:
+ *     - Fetches weather data from OpenWeatherMap API based on latitude, longitude, and forecast type.
+ *     - Processes the weather data using the generative AI model and returns the result.
+ *
+ *   - `checkWeatherCondition(lat: Double, lon: Double, datetime: String?, forecastType: String, condition: String?, onResult: (String) -> Unit)`:
+ *     - Checks specific weather conditions from OpenWeatherMap API based on latitude, longitude, and forecast type.
+ *     - Processes the weather data and evaluates the condition using the generative AI model.
+ *
+ *   - `fetchCurrentLocationWeather(context: Context, onResult: (Location?) -> Unit)`:
+ *     - Fetches the current location using the FusedLocationProviderClient and returns the location.
+ *
+ * - Utility Functions:
+ *   - `processWithGemini(weatherData: String): String`:
+ *     - A suspend function that processes the weather data using the generative AI model and returns the generated content.
+ *     - Handles exceptions and logs errors if content generation fails.
+ *   - `checkCondition(json: JSONObject, condition: String?): Boolean`:
+ *     - Checks if the weather data meets the specified condition (e.g., temperature, humidity, storm).
+ *
+ * Usage:
+ * - The `WeatherViewModel` class provides comprehensive weather management, including fetching weather data, checking specific conditions, and managing current location weather.
+ * - It ensures that weather data is fetched correctly and provides clear feedback to the user through AI-generated messages.
+ *
+ * This ViewModel enhances the LENA application's capabilities by integrating with the OpenWeatherMap API and leveraging generative AI for improved user interactions.
+ */
 
 import android.annotation.SuppressLint
 import android.content.Context

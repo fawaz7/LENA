@@ -19,7 +19,7 @@ android {
         minSdk = 24
         targetSdk = 35
         versionCode = 1
-        versionName = "1.1"
+        versionName = "1.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
 
@@ -54,7 +54,7 @@ android {
 dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
-    val nav_version = "2.8.3"
+    val nav_version = "2.8.6"
     val ai_version = "0.9.0"
     val compose_version = "1.7.5"
     implementation(libs.androidx.core.ktx)

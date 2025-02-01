@@ -1,5 +1,33 @@
 package com.yarmouk.lena.viewModels
 
+/**
+ * TimerViewModel.kt
+ *
+ * This Kotlin file defines the `TimerViewModel` class, which is a ViewModel responsible for managing timer-related functionalities within the LENA application.
+ * It leverages Android's AlarmClock API to set timers and uses a generative AI model to generate user-friendly confirmation messages.
+ *
+ * Key Components:
+ * - ViewModel Initialization:
+ *   - Initializes a `GenerativeModel` instance with API key and system instructions for generating responses.
+ *
+ * - Functions:
+ *   - `setTimer(context: Context, duration: Double, unit: String, onResult: (String) -> Unit)`:
+ *     - Sets a timer for the specified duration and unit using the AlarmClock API.
+ *     - Converts the duration to seconds based on the unit and constructs an intent to set the timer.
+ *     - Generates a user-friendly confirmation message using the generative AI model.
+ *
+ * - Utility Functions:
+ *   - `processWithGemini(prompt: String): String`:
+ *     - A suspend function that processes the prompt using the generative AI model and returns the generated content.
+ *     - Handles exceptions and logs errors if content generation fails.
+ *
+ * Usage:
+ * - The `TimerViewModel` class provides a straightforward way to set timers and generate confirmation messages.
+ * - It ensures that timers are set correctly and provides clear feedback to the user through AI-generated messages.
+ *
+ * This ViewModel enhances the LENA application's capabilities by integrating timer functionalities and leveraging generative AI for improved user interactions.
+ */
+
 import android.content.Context
 import android.content.Intent
 import android.provider.AlarmClock

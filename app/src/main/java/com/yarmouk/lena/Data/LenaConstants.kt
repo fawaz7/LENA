@@ -42,3 +42,5 @@ object LenaConstants {
         "Greetings! I'm Lena, your personal AI assistant. How can I assist you today?"
     )
 }
+
+

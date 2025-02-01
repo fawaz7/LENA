@@ -1,5 +1,51 @@
 package com.yarmouk.lena.viewModels
 
+/**
+ * ReminderViewModel.kt
+ *
+ * This Kotlin file defines the `ReminderViewModel` class, which is a ViewModel responsible for handling reminder-related functionalities within the LENA application.
+ * It integrates with the Android Calendar API to set, check, and manage reminders, and uses a generative AI model to generate user-friendly messages.
+ *
+ * Key Components:
+ * - ViewModel Initialization:
+ *   - Initializes a `GenerativeModel` instance with API key and system instructions for generating responses.
+ *
+ * - Functions:
+ *   - `setReminder(context: Context, accountName: String, title: String, datetime: String, onResult: (String) -> Unit)`:
+ *     - Sets a reminder at the specified datetime using the Calendar API.
+ *     - Requires WRITE_CALENDAR and READ_CALENDAR permissions.
+ *     - Generates a user-friendly message using the generative AI model.
+ *
+ *   - `setAllDayReminder(context: Context, accountName: String, title: String, onResult: (String) -> Unit)`:
+ *     - Sets an all-day reminder for the specified title.
+ *     - Requires WRITE_CALENDAR and READ_CALENDAR permissions.
+ *     - Generates a user-friendly message using the generative AI model.
+ *
+ *   - `setRecurringReminder(context: Context, accountName: String, title: String, datetime: String, frequency: String, onResult: (String) -> Unit)`:
+ *     - Sets a recurring reminder at the specified datetime with the given frequency.
+ *     - Requires WRITE_CALENDAR and READ_CALENDAR permissions.
+ *     - Generates a user-friendly message using the generative AI model.
+ *
+ *   - `checkReminder(context: Context, datetime: String?, onResult: (String) -> Unit)`:
+ *     - Checks for reminders on the specified date or the current date if no date is provided.
+ *     - Requires READ_CALENDAR permission.
+ *     - Generates a user-friendly message using the generative AI model.
+ *
+ *   - `getCalendarId(context: Context, accountName: String): Long?`:
+ *     - Retrieves the calendar ID associated with the given account name.
+ *     - Logs the calendar information and returns the first calendar ID that matches the account name.
+ *
+ *   - `processWithGemini(prompt: String): String`:
+ *     - A suspend function that processes the prompt using the generative AI model and returns the generated content.
+ *     - Handles exceptions and logs errors if content generation fails.
+ *
+ * Usage:
+ * - The `ReminderViewModel` class provides comprehensive management of reminders, including setting single, all-day, and recurring reminders, as well as checking for existing reminders.
+ * - It ensures that reminders are set correctly and provides clear feedback to the user through AI-generated messages.
+ *
+ * This ViewModel enhances the LENA application's capabilities by integrating with the Android Calendar API and leveraging generative AI for improved user interactions.
+ */
+
 import android.Manifest
 import android.content.ContentValues
 import android.content.Context

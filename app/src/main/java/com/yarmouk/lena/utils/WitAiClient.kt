@@ -11,6 +11,41 @@ import okhttp3.MediaType.Companion.toMediaType
 import okio.BufferedSink
 import java.io.IOException
 
+/**
+ * WitAiClient.kt
+ *
+ * This Kotlin class, `WitAiClient`, is a utility for interacting with the Wit.ai API to handle natural language processing and text-to-speech functionalities within the LENA application.
+ * It uses OkHttp for network requests and Gson for JSON parsing.
+ *
+ * Key Components:
+ * - Constructor:
+ *   - `WitAiClient(accessToken: String)`: Initializes the client with the provided Wit.ai access token.
+ *
+ * - Functions:
+ *   - `sendMessage(message: String, callback: (String) -> Unit)`:
+ *     - Sends a message to the Wit.ai API and invokes the callback with the response.
+ *     - Constructs the request URL and headers, and handles responses or failures.
+ *
+ *   - `fetchAvailableVoices(callback: (List<String>) -> Unit)`:
+ *     - Fetches the available voices from the Wit.ai API and invokes the callback with a list of voice names.
+ *     - Parses the JSON response to extract voice names.
+ *
+ *   - `synthesizeSpeech(text: String, voice: String, callback: (Boolean) -> Unit, onPlaybackComplete: () -> Unit)`:
+ *     - Synthesizes speech from text using a specified voice and plays the audio.
+ *     - Constructs the request body with JSON data, sends the request, and handles the response.
+ *     - Uses the `playAudio` function to play the received audio data.
+ *
+ *   - `playAudio(audioData: ByteArray, onPlaybackComplete: () -> Unit)`:
+ *     - Plays the provided audio data using `AudioTrack`.
+ *     - Configures the audio format and buffer size, plays the audio, and invokes the callback upon completion.
+ *
+ * Usage:
+ * - The `WitAiClient` class provides methods to send messages to Wit.ai for natural language understanding, fetch available voices for text-to-speech, and synthesize speech from text.
+ * - The synthesized speech is played using the `AudioTrack` class, ensuring smooth playback of audio responses.
+ *
+ * This utility class enhances the LENA application's capabilities by integrating with the Wit.ai API for advanced natural language processing and text-to-speech functionalities.
+ */
+
 class WitAiClient(private val accessToken: String) {
 
     private val client = OkHttpClient()

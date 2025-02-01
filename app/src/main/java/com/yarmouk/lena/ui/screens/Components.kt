@@ -1,5 +1,24 @@
 package com.yarmouk.lena.ui.screens
 
+/**
+ * Components.kt
+ *
+ * This Kotlin file defines various reusable UI components for the LENA application using Jetpack Compose.
+ * These components are created to promote code reusability and to avoid retyping common UI elements.
+ *
+ * Key Components:
+ * - `ConfirmationDialog`: A customizable confirmation dialog with a title, message, and confirm/dismiss buttons.
+ * - `InputConfirmationDialog`: A confirmation dialog that includes an input field, useful for scenarios requiring user input.
+ * - `SubmitButton`: A customizable button with different states (enabled, disabled, loading).
+ * - `FadedHorizontalDivider`: A horizontal divider with a fading gradient effect.
+ * - `PermissionDialog`: A dialog to request permissions from the user, with support for showing rationale.
+ *
+ * Usage:
+ * - These components can be reused across different screens in the application to maintain a consistent UI and reduce code duplication.
+ *
+ * This file enhances the LENA application's UI design by providing modular and reusable components.
+ */
+
 import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme

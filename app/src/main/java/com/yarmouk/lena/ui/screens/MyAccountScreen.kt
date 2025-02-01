@@ -1,7 +1,6 @@
 package com.yarmouk.lena.ui.screens
 
 
-import android.app.Activity
 import android.content.Context
 import android.media.MediaPlayer
 import android.util.Log
@@ -107,7 +106,6 @@ enum class SelectedOption {
 fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel, voiceViewModel: VoiceViewModel ) {
 
     val context = LocalContext.current
-    val activity = context as? Activity
     val focusManager = LocalFocusManager.current
     val isImeVisible by rememberImeState()
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -756,7 +754,7 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel, 
                                     confirmationText = "Confirm",
                                     onConfirm = { password ->
                                         currentPassword = password  // Set the current password
-                                        authViewModel.reauthenticateUser(password) { success ->
+                                        authViewModel.reAuthenticateUser(password) { success ->
                                             if (success) {
                                                 deleteAccountDialog.value = false
                                                 confirmDeleteDialog.value = true
@@ -767,7 +765,7 @@ fun MyAccountScreen(navController: NavController, authViewModel: AuthViewModel, 
                                     inputLabel = "Password",
                                     keyboardOnDone = { password ->
                                         currentPassword = password  // Set the current password
-                                        authViewModel.reauthenticateUser(password) { success ->
+                                        authViewModel.reAuthenticateUser(password) { success ->
                                             if (success) {
                                                 deleteAccountDialog.value = false
                                                 confirmDeleteDialog.value = true

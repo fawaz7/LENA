@@ -1,5 +1,35 @@
 package com.yarmouk.lena.viewModels
 
+/**
+ * SpeechRecognitionViewModel.kt
+ *
+ * This Kotlin file defines the `SpeechRecognitionViewModel` class, which is an AndroidViewModel responsible for managing speech recognition functionalities within the LENA application.
+ * It leverages Android's SpeechRecognizer API to handle voice input and integrates state management with LiveData and StateFlow.
+ *
+ * Key Components:
+ * - ViewModel Initialization:
+ *   - Initializes LiveData and StateFlow for managing the state of speech recognition, errors, and permissions.
+ *   - Checks if speech recognition is available on the device and sets an error message if not.
+ *
+ * - Functions:
+ *   - `checkAndInitializeSpeechRecognizer()`: Checks for audio recording permissions and initializes the SpeechRecognizer if permissions are granted.
+ *   - `handleMicrophoneClick()`: Handles microphone button clicks by starting or stopping listening based on the current state and permissions.
+ *   - `setupRecognitionListener()`: Sets up the recognition listener to handle various speech recognition events such as ready for speech, end of speech, and errors.
+ *   - `startListening()`: Starts listening for speech input using the SpeechRecognizer.
+ *   - `startListeningAfterTts()`: Starts listening for speech input after TTS playback has finished.
+ *   - `stopListening()`: Stops the SpeechRecognizer from listening.
+ *   - `onCleared()`: Cleans up the SpeechRecognizer when the ViewModel is cleared.
+ *   - `onPermissionHandled()`: Resets the permission required state.
+ *   - `setTtsPlaying(value: Boolean)`: Sets the TTS playing state to manage when to start listening.
+ *   - `clearError()`: Resets the error state after displaying it.
+ *
+ * Usage:
+ * - The `SpeechRecognitionViewModel` class provides a comprehensive approach to managing speech recognition, handling permissions, errors, and state transitions.
+ * - It ensures that the app can listen for speech input, process it, and handle various edge cases such as missing permissions and errors.
+ *
+ * This ViewModel enhances the LENA application's capabilities by integrating speech recognition functionalities and providing efficient state management for a seamless user experience.
+ */
+
 import android.Manifest
 import android.app.Application
 import android.content.Intent
@@ -148,10 +178,6 @@ class SpeechRecognitionViewModel(application: Application) : AndroidViewModel(ap
         super.onCleared()
         speechRecognizer?.destroy()
         speechRecognizer = null
-    }
-
-    fun onPermissionHandled() {
-        _needsPermission.value = false
     }
 
     fun setTtsPlaying(value: Boolean) {
